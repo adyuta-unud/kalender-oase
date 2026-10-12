@@ -16,6 +16,7 @@ import { OaseLoginCard } from "@/components/OaseLoginCard";
 import { SecurityCaptcha } from "@/components/SecurityCaptcha";
 import { GithubActionsModal } from "@/components/GithubActionsModal";
 import { FaqSection } from "@/components/FaqSection";
+import { GoogleDisclosure } from "@/components/GoogleDisclosure";
 import { Logo } from "@/components/Logo";
 import { WorkflowStepper } from "@/components/WorkflowStepper";
 import type {
@@ -360,12 +361,15 @@ function DashboardContent() {
           }}
         />
 
+        {/* Transparansi & Kepatuhan Kebijakan Penggunaan Data Google API */}
+        <GoogleDisclosure />
+
         {/* Section FAQ & Panduan SEO */}
         <FaqSection />
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 mt-12 text-sm text-slate-500">
+      <footer className="border-t border-slate-200 bg-white py-6 text-sm text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-end gap-4 ">
           <div className="flex flex-wrap items-center justify-center gap-4 text-sm font-medium">
             <a
@@ -375,6 +379,13 @@ function DashboardContent() {
               className="hover:text-slate-900 hover:underline transition-colors"
             >
               GitHub
+            </a>
+            <span className="text-slate-300">&bull;</span>
+            <a
+              href="#google-disclosure"
+              className="hover:text-slate-900 hover:underline transition-colors"
+            >
+              Google Disclosure
             </a>
             <span className="text-slate-300">&bull;</span>
             <Link
@@ -391,7 +402,7 @@ function DashboardContent() {
               Terms of Service
             </Link>
             <span className="text-slate-300">&bull;</span>
-            <p>
+            <p className="text-center sm:text-left">
               &copy; {new Date().getFullYear()} Kalender OASE &bull; Universitas
               Udayana
             </p>

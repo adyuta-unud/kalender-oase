@@ -74,7 +74,7 @@ export function FaqSection() {
       />
 
       <div className="border-b border-slate-100 pb-4">
-        <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+        <h2 className="text-lg font-bold text-slate-900 tracking-tight">
           Pertanyaan Umum (FAQ)
         </h2>
       </div>
