@@ -3,7 +3,7 @@ name: OASE Sync on Vercel
 on:
   schedule:
     # Berjalan otomatis setiap 2 jam sekali (00:17, 02:17, 04:17, dst UTC)
-    - cron: '17 */2 * * *'
+    - cron: '17 */3 * * *'
   workflow_dispatch:
     # Memungkinkan trigger sinkronisasi manual kapan saja dari tombol "Run workflow" di GitHub Actions
 
