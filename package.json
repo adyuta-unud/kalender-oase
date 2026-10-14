@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test tests/ical.test.ts tests/sync.test.ts tests/security.test.ts tests/github-actions.test.ts tests/moodle.test.ts",
+    "test": "node --experimental-strip-types --test tests/ical.test.ts tests/sync.test.ts tests/security.test.ts tests/github-actions.test.ts tests/moodle.test.ts tests/whatsapp.test.ts",
     "test:actions": "node --experimental-strip-types scripts/test-github-actions.ts",
     "sync:cron": "node --experimental-strip-types scripts/sync.ts"
   },

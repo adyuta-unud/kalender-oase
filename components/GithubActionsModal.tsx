@@ -182,6 +182,19 @@ export function GithubActionsModal({
                   Moodle OASE
                 </p>
               </div>
+
+              {/* FONNTE_TOKEN & FONNTE_TARGET_PHONE */}
+              <div className="text-sm text-slate-600 border-t border-slate-200 pt-2">
+                <span className="font-mono font-bold text-slate-800">
+                  FONNTE_TOKEN &amp; FONNTE_TARGET_PHONE
+                </span>
+                <span className="text-sm text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded ml-1 font-semibold">
+                  Opsional: Notifikasi WhatsApp
+                </span>
+                <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">
+                  Tambahkan token device Fonnte dan nomor WhatsApp Anda untuk menerima pesan otomatis saat ada tugas baru yang terdeteksi.
+                </p>
+              </div>
             </div>
           </div>
 

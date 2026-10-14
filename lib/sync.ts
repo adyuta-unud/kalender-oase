@@ -143,6 +143,7 @@ export async function syncOaseToGoogleCalendar(
   let completed = 0;
   let skipped = 0;
   const errors: SyncResult["errors"] = [];
+  const createdEvents: SyncResult["createdEvents"] = [];
 
   const pendingUidSet = new Set(oaseEvents.map((e) => e.uid));
 
@@ -182,6 +183,7 @@ export async function syncOaseToGoogleCalendar(
           requestBody: eventBody,
         });
         created++;
+        createdEvents.push(event);
       } else {
         // Event sudah ada: Cek apakah ada perubahan
         // Jika sebelumnya sempat ditandai selesai tapi kembali muncul di pending list, reset status selesainya
@@ -272,5 +274,6 @@ export async function syncOaseToGoogleCalendar(
     calendarName: targetCalendarName,
     calendarId: targetCalendarId,
     syncedAt: new Date().toISOString(),
+    createdEvents,
   };
 }

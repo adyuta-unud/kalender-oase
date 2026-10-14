@@ -63,6 +63,7 @@ export interface SyncResult {
   calendarName: string;
   calendarId: string;
   syncedAt: string;
+  createdEvents?: OaseEvent[];
 }
 
 export interface GoogleSessionData {

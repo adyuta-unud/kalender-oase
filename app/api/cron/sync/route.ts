@@ -108,12 +108,25 @@ async function handleCronSync(request: Request) {
       oauth2Client
     );
 
+    // Kirim notifikasi WhatsApp via Fonnte jika ada tugas baru yang berhasil ditambahkan
+    let waNotification = undefined;
+    if (result.created > 0 && result.createdEvents && result.createdEvents.length > 0) {
+      try {
+        const { sendWhatsAppNewTasksNotification } = await import('@/lib/whatsapp');
+        waNotification = await sendWhatsAppNewTasksNotification(result.createdEvents);
+      } catch (waErr) {
+        console.warn('Gagal memicu notifikasi WhatsApp Fonnte:', waErr);
+      }
+    }
+
     const completedMsg = result.completed ? `, ${result.completed} selesai` : '';
+    const waMsg = waNotification?.sent ? ' (Notifikasi WA terkirim)' : '';
     return NextResponse.json({
       success: true,
       source: 'moodle_action_events',
-      message: `Sinkronisasi otomatis berhasil! (${result.created} dibuat, ${result.updated} diperbarui${completedMsg}, ${result.skipped} dilewati)`,
+      message: `Sinkronisasi otomatis berhasil! (${result.created} dibuat, ${result.updated} diperbarui${completedMsg}, ${result.skipped} dilewati)${waMsg}`,
       result,
+      waNotification,
     });
   } catch (error: unknown) {
     const rawMessage = error instanceof Error ? error.message : String(error);
