@@ -22,38 +22,34 @@ export function formatDateWita(date: Date): string {
 }
 
 /**
- * Membentuk pesan WhatsApp yang rapi dan terstruktur untuk daftar tugas baru
+/**
+ * Membentuk pesan WhatsApp yang ringkas, minimalis, dan bebas link (anti-spam)
  */
 export function buildNewTasksMessage(tasks: OaseEvent[]): string {
   const taskCount = tasks.length;
-  const countText = taskCount === 1 ? "1 tugas baru" : `${taskCount} tugas baru`;
 
   const taskList = tasks
     .map((task, index) => {
       const deadlineStr = formatDateWita(task.start);
       const course = task.courseName ? task.courseName : "Tidak tercantum";
-      const taskLink =
-        task.links && task.links.length > 0 && task.links[0]?.url
-          ? task.links[0].url
-          : "https://oase.unud.ac.id";
+      const prefix = taskCount > 1 ? `${index + 1}. ` : "• ";
 
       return [
-        `*${index + 1}. ${task.summary}*`,
-        `   📚 *Mata Kuliah:* ${course}`,
-        `   ⏰ *Batas Waktu:* ${deadlineStr}`,
-        `   🔗 *Link Tugas:* ${taskLink}`,
+        `${prefix}*${task.summary}*`,
+        `   📚 ${course}`,
+        `   ⏰ ${deadlineStr}`,
       ].join("\n");
     })
     .join("\n\n");
 
   return [
-    `🔔 *PEMBERITAHUAN TUGAS BARU OASE UNUD*`,
+    `*Tugas Baru OASE UNUD*`,
     ``,
-    `Halo! Sinkronisasi otomatis mendeteksi ada *${countText}* yang baru saja ditambahkan ke Google Calendar Anda:`,
+    `Tersinkron ke Google Calendar:`,
     ``,
     taskList,
     ``,
-    `📅 _Pengingat (1 hari, 2 jam, dan 30 menit) telah otomatis disetel di Google Calendar._`,
+    `_Pembaruan: ${formatDateWita(new Date())}_`,
   ].join("\n");
 }
 
@@ -73,15 +69,19 @@ export async function sendWhatsAppNewTasksNotification(
   options?: {
     token?: string;
     targetPhone?: string;
-  }
+  },
 ): Promise<WhatsAppSendResult> {
   // Jika tidak ada tugas baru, tidak perlu mengirim pesan
   if (!newTasks || newTasks.length === 0) {
     return { sent: false, reason: "no_new_tasks" };
   }
 
-  const token = (options?.token || process.env.FONNTE_TOKEN)?.trim().replace(/^["']|["']$/g, "");
-  const targetPhone = (options?.targetPhone || process.env.FONNTE_TARGET_PHONE)?.trim().replace(/^["']|["']$/g, "");
+  const token = (options?.token || process.env.FONNTE_TOKEN)
+    ?.trim()
+    .replace(/^["']|["']$/g, "");
+  const targetPhone = (options?.targetPhone || process.env.FONNTE_TARGET_PHONE)
+    ?.trim()
+    .replace(/^["']|["']$/g, "");
 
   // Jika kredensial belum disetel di environment variables, lewati secara halus
   if (!token || !targetPhone) {
@@ -97,17 +97,27 @@ export async function sendWhatsAppNewTasksNotification(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+    // Normalisasi nomor telepon ke format internasional (misal: 08123... -> 628123...)
+    let formattedPhone = targetPhone.replace(/\D/g, "");
+    if (formattedPhone.startsWith("0")) {
+      formattedPhone = "62" + formattedPhone.slice(1);
+    }
+
+    const formData = new FormData();
+    formData.append("target", formattedPhone);
+    formData.append("message", message);
+    formData.append("countryCode", "62");
+    // Simulasi pengetikan alami di WhatsApp untuk menghindari deteksi spam/bot
+    formData.append("typing", "true");
+    // Durasi mengetik 3 detik agar terlihat wajar dan natural
+    formData.append("duration", "3");
+
     const res = await fetch("https://api.fonnte.com/send", {
       method: "POST",
       headers: {
         Authorization: token,
-        "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        target: targetPhone,
-        message,
-        countryCode: "62",
-      }),
+      body: formData,
       signal: controller.signal,
     });
 
@@ -116,7 +126,8 @@ export async function sendWhatsAppNewTasksNotification(
     const data = await res.json().catch(() => null);
 
     if (!res.ok || (data && data.status === false)) {
-      const errorMsg = data?.reason || `HTTP ${res.status}: Gagal mengirim via Fonnte`;
+      const errorMsg =
+        data?.reason || `HTTP ${res.status}: Gagal mengirim via Fonnte`;
       console.warn("[Fonnte WhatsApp Warning]:", errorMsg);
       return {
         sent: false,
@@ -125,7 +136,9 @@ export async function sendWhatsAppNewTasksNotification(
       };
     }
 
-    console.info(`[Fonnte WhatsApp]: Berhasil mengirim notifikasi ${newTasks.length} tugas baru ke ${targetPhone}`);
+    console.info(
+      `[Fonnte WhatsApp]: Berhasil mengirim notifikasi ${newTasks.length} tugas baru ke ${targetPhone}`,
+    );
     return {
       sent: true,
       data,
