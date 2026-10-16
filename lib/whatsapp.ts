@@ -109,8 +109,8 @@ export async function sendWhatsAppNewTasksNotification(
     formData.append("countryCode", "62");
     // Simulasi pengetikan alami di WhatsApp untuk menghindari deteksi spam/bot
     formData.append("typing", "true");
-    // Durasi mengetik 3 detik agar terlihat wajar dan natural
-    formData.append("duration", "3");
+    // Durasi mengetik 5 detik agar terlihat wajar dan natural
+    formData.append("duration", "5");
 
     const res = await fetch("https://api.fonnte.com/send", {
       method: "POST",
