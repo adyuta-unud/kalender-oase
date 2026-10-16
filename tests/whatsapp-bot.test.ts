@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {
   GREETING_PATTERN,
   CLOSING_PATTERN,
+  OASE_SCHEDULE_PATTERN,
   determineBotReply,
+  buildUpcomingTasksMessage,
   askGroqAi,
   sendFonnteReply,
   handleIncomingWhatsAppWebhook,
@@ -12,29 +14,106 @@ import {
   removeBotMention,
 } from "../lib/whatsapp-bot.ts";
 
-
-
-test("WhatsApp Bot: GREETING_PATTERN matches standard greeting words", () => {
-  const greetings = ["halo", "HAI", "Hi", "Hello", "hey", "info", "menu"];
+test("WhatsApp Bot: GREETING_PATTERN matches standard and extended greeting words", () => {
+  const greetings = [
+    "halo",
+    "HAI",
+    "Hi",
+    "Hello",
+    "hey",
+    "hei",
+    "p",
+    "ping",
+    "tes",
+    "test",
+    "assalamualaikum",
+    "assalamu'alaikum",
+    "selamat pagi",
+    "pagi",
+    "selamat siang",
+    "selamat sore",
+    "selamat malam",
+    "menu",
+    "help",
+    "bantuan",
+    "info",
+  ];
   for (const word of greetings) {
     assert.ok(GREETING_PATTERN.test(word), `Harus mencocokkan: ${word}`);
   }
 
-  assert.ok(!GREETING_PATTERN.test("halo apa kabar hari ini"), "Pola regex harus full match");
-  assert.ok(!GREETING_PATTERN.test("terima kasih"));
+  assert.ok(!GREETING_PATTERN.test("halo apa kabar hari ini"), "Pola regex sapaan harus exact");
+  assert.ok(!GREETING_PATTERN.test("kapan deadline tugas?"));
 });
 
-test("WhatsApp Bot: CLOSING_PATTERN matches closing phrases", () => {
-  const closings = ["cukup", "terima kasih", "Makasih", "THANKS", "ty", "thank you"];
+test("WhatsApp Bot: CLOSING_PATTERN matches extended closing phrases", () => {
+  const closings = [
+    "cukup",
+    "terima kasih",
+    "Makasih",
+    "THANKS",
+    "ty",
+    "thank you",
+    "ok",
+    "oke",
+    "sip",
+    "siap",
+    "mantap",
+    "mantul",
+    "bye",
+    "dadah",
+  ];
   for (const word of closings) {
     assert.ok(CLOSING_PATTERN.test(word), `Harus mencocokkan: ${word}`);
   }
 
   assert.ok(!CLOSING_PATTERN.test("terima kasih banyak atas bantuannya"));
-  assert.ok(!CLOSING_PATTERN.test("halo"));
+  assert.ok(!CLOSING_PATTERN.test("tugas oase"));
 });
 
-test("WhatsApp Bot: determineBotReply handles Route 1 Greeting", async () => {
+test("WhatsApp Bot: OASE_SCHEDULE_PATTERN matches schedule and task check keywords", () => {
+  const queries = [
+    "cek tugas",
+    "ada tugas apa?",
+    "deadline",
+    "tugas oase",
+    "info deadline minggu ini",
+    "jadwal oase",
+    "jadwal kuliah",
+    "apa ada pr?",
+    "kuis oase",
+    "jadwal praktikum",
+  ];
+  for (const q of queries) {
+    assert.ok(OASE_SCHEDULE_PATTERN.test(q), `Harus mencocokkan query: ${q}`);
+  }
+
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("siapa nama penciptamu?"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("ceritakan lelucon"));
+});
+
+test("WhatsApp Bot: buildUpcomingTasksMessage formats task lists and empty states cleanly", () => {
+  // 1. Kasus daftar tugas terisi
+  const sampleTasks = [
+    {
+      summary: "Tugas 1: Analisis Sistem",
+      courseName: "Rekayasa Perangkat Lunak",
+      deadline: new Date("2026-10-25T15:00:00+08:00"),
+    },
+  ];
+  const msgFilled = buildUpcomingTasksMessage(sampleTasks, "Oka");
+  assert.ok(msgFilled.includes("Daftar Tugas & Deadline OASE Mendatang"));
+  assert.ok(msgFilled.includes("Tugas 1: Analisis Sistem"));
+  assert.ok(msgFilled.includes("Rekayasa Perangkat Lunak"));
+  assert.ok(msgFilled.includes("kak Oka"));
+
+  // 2. Kasus daftar tugas kosong
+  const msgEmpty = buildUpcomingTasksMessage([], "Oka");
+  assert.ok(msgEmpty.includes("Tidak ada tugas atau deadline OASE aktif"));
+  assert.ok(msgEmpty.includes("kak Oka"));
+});
+
+test("WhatsApp Bot: determineBotReply handles Route 1 Greeting with helpful menu", async () => {
   const decision = await determineBotReply({
     sender: "6281234567890",
     message: "Halo",
@@ -42,11 +121,12 @@ test("WhatsApp Bot: determineBotReply handles Route 1 Greeting", async () => {
   });
 
   assert.equal(decision.type, "greeting");
-  assert.equal(decision.replyText, "Hi kak Budi, ada yg bisa dibantu?");
+  assert.ok(decision.replyText?.includes("Halo kak Budi!"));
+  assert.ok(decision.replyText?.includes("cek tugas"));
   assert.equal(decision.duration, 3);
 });
 
-test("WhatsApp Bot: determineBotReply handles Route 2 Closing", async () => {
+test("WhatsApp Bot: determineBotReply handles Route 2 Closing warmly", async () => {
   const decision = await determineBotReply({
     sender: "6281234567890",
     message: "Terima Kasih",
@@ -54,30 +134,103 @@ test("WhatsApp Bot: determineBotReply handles Route 2 Closing", async () => {
   });
 
   assert.equal(decision.type, "closing");
-  assert.equal(decision.replyText, "Ok, kak Siti");
+  assert.ok(decision.replyText?.includes("Sama-sama kak Siti!"));
   assert.equal(decision.duration, 3);
 });
 
-test("WhatsApp Bot: determineBotReply handles Route 3 Fallback to AI", async () => {
+test("WhatsApp Bot: determineBotReply handles Route 3 OASE tasks from Google Calendar", async () => {
+  // 1. Kasus ada tugas aktif
+  const mockTasks = [
+    {
+      id: "task-1",
+      summary: "Tugas 4: Integrasi Webhook",
+      courseName: "Pemrograman Web",
+      deadline: new Date("2026-10-20T23:59:00+08:00"),
+    },
+    {
+      id: "task-2",
+      summary: "Kuis 2: Normalisasi",
+      courseName: "Basis Data",
+      deadline: new Date("2026-10-22T12:00:00+08:00"),
+    },
+  ];
+
+  const mockGetTasks = async () => ({
+    calendarFound: true,
+    tasks: mockTasks,
+  });
+
+  const decisionWithTasks = await determineBotReply(
+    {
+      sender: "6281234567890",
+      message: "cek tugas",
+      name: "Oka",
+    },
+    { getUpcomingTasksFn: mockGetTasks }
+  );
+
+  assert.equal(decisionWithTasks.type, "tasks");
+  assert.ok(decisionWithTasks.replyText?.includes("Daftar Tugas & Deadline OASE Mendatang"));
+  assert.ok(decisionWithTasks.replyText?.includes("Tugas 4: Integrasi Webhook"));
+  assert.ok(decisionWithTasks.replyText?.includes("Pemrograman Web"));
+
+  // 2. Kasus tidak ada tugas / tugas sudah selesai
+  const mockGetEmptyTasks = async () => ({
+    calendarFound: true,
+    tasks: [],
+  });
+
+  const decisionEmpty = await determineBotReply(
+    {
+      sender: "6281234567890",
+      message: "apakah ada deadline?",
+      name: "Oka",
+    },
+    { getUpcomingTasksFn: mockGetEmptyTasks }
+  );
+
+  assert.equal(decisionEmpty.type, "tasks");
+  assert.ok(decisionEmpty.replyText?.includes("Tidak ada tugas atau deadline OASE aktif"));
+
+  // 3. Kasus error Google Calendar (misal token belum diset)
+  const mockGetErrorTasks = async () => {
+    throw new Error("GOOGLE_REFRESH_TOKEN belum disetel.");
+  };
+
+  const decisionError = await determineBotReply(
+    {
+      sender: "6281234567890",
+      message: "jadwal oase",
+      name: "Oka",
+    },
+    { getUpcomingTasksFn: mockGetErrorTasks }
+  );
+
+  assert.equal(decisionError.type, "tasks");
+  assert.ok(decisionError.replyText?.includes("Tidak dapat memuat jadwal tugas"));
+  assert.ok(decisionError.replyText?.includes("GOOGLE_REFRESH_TOKEN belum disetel"));
+});
+
+test("WhatsApp Bot: determineBotReply handles Route 4 Fallback to AI", async () => {
   let askedPrompt = "";
   const mockAskAi = async (msg: string) => {
     askedPrompt = msg;
-    return "Tugas praktikum dapat diakses di menu OASE.";
+    return "Universitas Udayana berlokasi di Bali, Indonesia.";
   };
 
   const decision = await determineBotReply(
     {
       sender: "6281234567890",
-      message: "Bagaimana cara melihat tugas saya?",
+      message: "Di mana lokasi kampus Universitas Udayana?",
       name: "Budi",
     },
     { askAiFn: mockAskAi }
   );
 
   assert.equal(decision.type, "ai");
-  assert.equal(decision.replyText, "Tugas praktikum dapat diakses di menu OASE.");
+  assert.equal(decision.replyText, "Universitas Udayana berlokasi di Bali, Indonesia.");
   assert.equal(decision.duration, 5);
-  assert.equal(askedPrompt, "Bagaimana cara melihat tugas saya?");
+  assert.equal(askedPrompt, "Di mana lokasi kampus Universitas Udayana?");
 });
 
 test("WhatsApp Bot: determineBotReply ignores empty messages or anti-loop", async () => {
@@ -177,7 +330,8 @@ test("WhatsApp Bot: handleIncomingWhatsAppWebhook handles complete execution flo
   assert.equal(result.processed, true);
   assert.equal(result.decision.type, "greeting");
   assert.equal(sentTarget, "6281234567890");
-  assert.equal(sentMessage, "Hi kak Andi, ada yg bisa dibantu?");
+  assert.ok(sentMessage.includes("Halo kak Andi!"));
+  assert.ok(sentMessage.includes("cek tugas"));
   assert.equal(capturedOpts?.inboxid, 998877, "inboxid pada chat personal harus diteruskan untuk quoted reply");
 });
 
@@ -298,14 +452,44 @@ test("WhatsApp Group Reply: responds only when bot is mentioned in group", async
     name: "Rudi",
   });
   assert.equal(resWithMention.type, "greeting");
-  assert.equal(resWithMention.replyText, "Hi kak Rudi, ada yg bisa dibantu?");
+  assert.ok(resWithMention.replyText?.includes("Halo kak Rudi!"));
+  assert.ok(resWithMention.replyText?.includes("cek tugas"));
 
-  // 3. Pesan grup DENGAN mention bot untuk AI
+  // 3. Pesan grup DENGAN mention bot untuk Cek Tugas (Route 3)
+  const mockTasks = [
+    {
+      id: "task-group",
+      summary: "Tugas Besar Arsitektur Komputer",
+      courseName: "Arsitektur Komputer",
+      deadline: new Date("2026-10-25T23:59:00+08:00"),
+    },
+  ];
+
+  const resGroupTask = await determineBotReply(
+    {
+      sender: groupJid,
+      isgroup: true,
+      device: botDevice,
+      member: "6281234567890",
+      message: "@6285123456789 cek tugas",
+      name: "Rudi",
+    },
+    {
+      getUpcomingTasksFn: async () => ({
+        calendarFound: true,
+        tasks: mockTasks,
+      }),
+    }
+  );
+  assert.equal(resGroupTask.type, "tasks");
+  assert.ok(resGroupTask.replyText?.includes("Tugas Besar Arsitektur Komputer"));
+
+  // 4. Pesan grup DENGAN mention bot untuk AI (Route 4)
   let aiCalled = false;
   const mockAi = async (msg: string) => {
     aiCalled = true;
-    assert.equal(msg, "kapan deadline praktikum?");
-    return "Deadline praktikum adalah hari Jumat pukul 23:59 WITA.";
+    assert.equal(msg, "apa nama model AI anda?");
+    return "Saya ditenagai oleh model AI Qwen.";
   };
 
   const resAi = await determineBotReply(
@@ -314,16 +498,16 @@ test("WhatsApp Group Reply: responds only when bot is mentioned in group", async
       isgroup: true,
       device: botDevice,
       member: "6281234567890",
-      message: "@6285123456789 kapan deadline praktikum?",
+      message: "@6285123456789 apa nama model AI anda?",
       name: "Rudi",
     },
     { askAiFn: mockAi }
   );
   assert.equal(resAi.type, "ai");
   assert.equal(aiCalled, true);
-  assert.equal(resAi.replyText, "Deadline praktikum adalah hari Jumat pukul 23:59 WITA.");
+  assert.equal(resAi.replyText, "Saya ditenagai oleh model AI Qwen.");
 
-  // 4. Anti-loop di grup: Pesan yang dikirim oleh nomor bot sendiri di dalam grup harus diabaikan
+  // 5. Anti-loop di grup: Pesan yang dikirim oleh nomor bot sendiri di dalam grup harus diabaikan
   const resSelfInGroup = await determineBotReply({
     sender: groupJid,
     isgroup: true,

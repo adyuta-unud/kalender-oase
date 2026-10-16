@@ -1,6 +1,5 @@
 import { google } from 'googleapis';
 import type { GoogleSessionData } from '../types/calendar.ts';
-import { getSession, saveSession } from './session.ts';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
@@ -56,31 +55,40 @@ export async function getAuthenticatedOAuth2Client(explicitRefreshToken?: string
     return oauth2Client;
   }
 
-  // 2. Prioritaskan sesi pengguna yang sedang login di browser
-  const session = await getSession();
-  if (session && session.tokens) {
-    const oauth2Client = createOAuth2Client();
-    oauth2Client.setCredentials({
-      access_token: session.tokens.access_token || undefined,
-      refresh_token: session.tokens.refresh_token || undefined,
-      scope: session.tokens.scope || undefined,
-      token_type: session.tokens.token_type || undefined,
-      expiry_date: session.tokens.expiry_date || undefined,
-    });
+  // 2. Prioritaskan sesi pengguna yang sedang login di browser (jika di environment Next.js)
+  try {
+    const { getSession, saveSession } = await import('./session.ts');
+    const session = await getSession();
+    if (session && session.tokens) {
+      const oauth2Client = createOAuth2Client();
+      oauth2Client.setCredentials({
+        access_token: session.tokens.access_token || undefined,
+        refresh_token: session.tokens.refresh_token || undefined,
+        scope: session.tokens.scope || undefined,
+        token_type: session.tokens.token_type || undefined,
+        expiry_date: session.tokens.expiry_date || undefined,
+      });
 
-    // Pasang event listener untuk memperbarui session saat token diperbarui otomatis oleh googleapis
-    oauth2Client.on('tokens', async (newTokens) => {
-      const updatedSession: GoogleSessionData = {
-        ...session,
-        tokens: {
-          ...session.tokens,
-          ...newTokens,
-        },
-      };
-      await saveSession(updatedSession);
-    });
+      // Pasang event listener untuk memperbarui session saat token diperbarui otomatis oleh googleapis
+      oauth2Client.on('tokens', async (newTokens) => {
+        try {
+          const updatedSession: GoogleSessionData = {
+            ...session,
+            tokens: {
+              ...session.tokens,
+              ...newTokens,
+            },
+          };
+          await saveSession(updatedSession);
+        } catch {
+          // Abaikan jika penyimpanan session gagal di background
+        }
+      });
 
-    return oauth2Client;
+      return oauth2Client;
+    }
+  } catch {
+    // Abaikan jika dipanggil di luar konteks request Next.js (misal test runner)
   }
 
   // 3. Fallback ke environment variable (berguna untuk background cron job tanpa sesi cookie)

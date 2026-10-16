@@ -277,3 +277,110 @@ export async function syncOaseToGoogleCalendar(
     createdEvents,
   };
 }
+
+export interface UpcomingOaseTask {
+  id?: string;
+  summary: string;
+  courseName?: string;
+  deadline?: Date;
+  description?: string;
+  isCompleted?: boolean;
+}
+
+/**
+ * Mengambil daftar tugas / deadline OASE mendatang dari Google Calendar
+ */
+export async function getUpcomingOaseEventsFromCalendar(options?: {
+  daysAhead?: number;
+  calendarId?: string;
+  explicitOAuth2Client?: InstanceType<typeof google.auth.OAuth2>;
+}): Promise<{
+  calendarFound: boolean;
+  tasks: UpcomingOaseTask[];
+}> {
+  const oauth2Client =
+    options?.explicitOAuth2Client || (await getAuthenticatedOAuth2Client());
+  if (!oauth2Client) {
+    throw new Error(
+      "Google Calendar belum terhubung. Silakan hubungkan akun Google atau set GOOGLE_REFRESH_TOKEN.",
+    );
+  }
+
+  const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+  // Cari kalender tujuan: utamakan dedicated "OASE UNUD - Akademik", jika tidak ada gunakan primary
+  let targetCalendarId = options?.calendarId || "primary";
+
+  if (!options?.calendarId) {
+    try {
+      const calendarList = await calendar.calendarList.list({
+        minAccessRole: "reader",
+      });
+      const items = calendarList.data.items || [];
+      const dedicated = items.find(
+        (cal) =>
+          cal.summary?.trim().toLowerCase() ===
+          DEDICATED_CALENDAR_NAME.toLowerCase(),
+      );
+      if (dedicated?.id) {
+        targetCalendarId = dedicated.id;
+      }
+    } catch {
+      targetCalendarId = "primary";
+    }
+  }
+
+  const daysAhead = options?.daysAhead ?? 30;
+  const now = new Date();
+  const timeMin = now.toISOString();
+  const timeMax = new Date(
+    now.getTime() + daysAhead * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  const eventsRes = await calendar.events.list({
+    calendarId: targetCalendarId,
+    timeMin,
+    timeMax,
+    singleEvents: true,
+    orderBy: "startTime",
+    maxResults: 50,
+  });
+
+  const rawItems = eventsRes.data.items || [];
+
+  const tasks: UpcomingOaseTask[] = rawItems
+    .filter((item) => {
+      // Abaikan jika sudah ditandai selesai
+      if (item.summary?.startsWith("✅ [Selesai]")) return false;
+      if (item.extendedProperties?.private?.oase_completed === "true")
+        return false;
+      return Boolean(item.summary);
+    })
+    .map((item) => {
+      const course =
+        item.extendedProperties?.private?.oase_course ||
+        item.description?.match(/Mata Kuliah:\s*([^\n\r]+)/i)?.[1]?.trim() ||
+        undefined;
+
+      const dateStr =
+        item.start?.dateTime ||
+        item.start?.date ||
+        item.end?.dateTime ||
+        item.end?.date;
+      const deadline = dateStr ? new Date(dateStr) : undefined;
+
+      return {
+        id: item.id || undefined,
+        summary: item.summary || "Tugas OASE",
+        courseName: course,
+        deadline,
+        description: item.description || undefined,
+        isCompleted: false,
+      };
+    });
+
+  return {
+    calendarFound: true,
+    tasks,
+  };
+}

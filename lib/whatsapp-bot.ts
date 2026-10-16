@@ -1,5 +1,9 @@
 import crypto from "node:crypto";
-import { normalizeWhatsAppTarget } from "./whatsapp.ts";
+import { normalizeWhatsAppTarget, formatDateWita } from "./whatsapp.ts";
+import {
+  getUpcomingOaseEventsFromCalendar,
+  type UpcomingOaseTask,
+} from "./sync.ts";
 
 /**
  * Validasi otentikasi webhook secret menggunakan timing-safe comparison
@@ -54,19 +58,59 @@ export interface IncomingWhatsAppPayload {
 }
 
 export interface BotReplyDecision {
-  type: "greeting" | "closing" | "ai" | "ignored";
+  type: "greeting" | "closing" | "tasks" | "ai" | "ignored";
   replyText?: string;
   duration?: number;
   reason?: string;
 }
 
-// Regex pola sapaan dan penutup sesuai blueprint Make.com
-export const GREETING_PATTERN = /^(halo|hai|hi|hello|hey|info|menu)$/i;
-export const CLOSING_PATTERN =
-  /^(cukup|terima kasih|makasih|thanks|ty|thank you)$/i;
+// Regex pola sapaan dan penutup yang diperluas
+export const GREETING_PATTERN =
+  /^(halo+|hai+|hi+|hello+|hey+|hei+|p|ping|tes+|test+|assalamu['’]?alaikum|samlikum|(?:selamat\s+)?(?:pagi|siang|sore|malam)|menu|help|bantuan|info|fitur)$/i;
 
-const DEFAULT_GROQ_SYSTEM_PROMPT =
-  "Kamu adalah asisten customer service yang ramah, sopan, dan solutif. Jawab pesan dalam bahasa Indonesia yang ringkas, natural, dan mudah dipahami.";
+export const CLOSING_PATTERN =
+  /^(cukup|sudah\s+cukup|terima\s*kasih|terimakasih|makasih|makasi|mksih|thanks|thank\s*you|thx|ty|ok+|oke+|si+p|sia+p|baik|mantap|mantul|bye|dadah)$/i;
+
+// Regex pola deteksi intent cek jadwal / tugas / deadline OASE
+export const OASE_SCHEDULE_PATTERN =
+  /(?:^|\b)(?:cek|lihat|info|daftar|ada\s+apa|ada|jadwal)?\s*(?:tugas|deadline|jadwal|kuis|ujian|asistensi|praktikum|agenda|pr)(?:\s+(?:oase|kuliah|akademik|minggu\s+ini|hari\s+ini|besok))?(?:\b|\?|$)/i;
+
+/**
+ * Menyusun pesan WhatsApp daftar tugas / deadline OASE dari Google Calendar
+ */
+export function buildUpcomingTasksMessage(
+  tasks: UpcomingOaseTask[],
+  contactName?: string,
+): string {
+  const nameGreeting = contactName ? ` kak ${contactName}` : "";
+
+  if (!tasks || tasks.length === 0) {
+    return [
+      `🎉 *Tidak ada tugas atau deadline OASE aktif dalam waktu dekat!*`,
+      ``,
+      `Semua tugas sudah selesai atau belum ada jadwal baru di Google Calendar. Selamat beristirahat${nameGreeting}! 😊`,
+    ].join("\n");
+  }
+
+  const items = tasks.map((task, index) => {
+    const course = task.courseName ? `\n   📖 ${task.courseName}` : "";
+    const deadline = task.deadline
+      ? `\n   ⏰ Batas Waktu: ${formatDateWita(task.deadline)}`
+      : "";
+    return `${index + 1}. *${task.summary}*${course}${deadline}`;
+  });
+
+  return [
+    `📚 *Daftar Tugas & Deadline OASE Mendatang*`,
+    ``,
+    items.join("\n\n"),
+    ``,
+    `Tetap semangat dan jangan sampai terlewat ya${nameGreeting}! 💪`,
+  ].join("\n");
+}
+
+export const DEFAULT_GROQ_SYSTEM_PROMPT =
+  "Kamu adalah Asisten Pintar Kalender OASE Moodle Universitas Udayana. Kamu ramah, sopan, ringkas, dan solutif. Kamu membantu mahasiswa seputar jadwal perkuliahan, tugas/deadline OASE, serta sinkronisasi Google Calendar. Jawab pesan dalam bahasa Indonesia yang ringkas, natural, dan mudah dipahami. Jika ditanya hal umum di luar akademik, tetap jawab dengan santun, singkat, dan bermanfaat.";
 
 /**
  * Memanggil Groq OpenAI-compatible Chat Completions API
@@ -148,9 +192,8 @@ export function isBotMentionedInGroup(
   const botPhone =
     typeof identifiers === "string" ? identifiers : identifiers?.botPhone;
   const botLid =
-    (typeof identifiers === "object"
-      ? identifiers?.botLid
-      : undefined) || process.env.FONNTE_BOT_LID;
+    (typeof identifiers === "object" ? identifiers?.botLid : undefined) ||
+    process.env.FONNTE_BOT_LID;
 
   // 1. Cek kecocokan eksplisit dengan ID Bot (LID WhatsApp dari environment)
   if (botLid?.trim()) {
@@ -204,9 +247,8 @@ export function removeBotMention(
   const botPhone =
     typeof identifiers === "string" ? identifiers : identifiers?.botPhone;
   const botLid =
-    (typeof identifiers === "object"
-      ? identifiers?.botLid
-      : undefined) || process.env.FONNTE_BOT_LID;
+    (typeof identifiers === "object" ? identifiers?.botLid : undefined) ||
+    process.env.FONNTE_BOT_LID;
 
   let cleaned = message;
 
@@ -252,6 +294,10 @@ export async function determineBotReply(
   payload: IncomingWhatsAppPayload,
   deps?: {
     askAiFn?: (msg: string) => Promise<string>;
+    getUpcomingTasksFn?: () => Promise<{
+      calendarFound: boolean;
+      tasks: UpcomingOaseTask[];
+    }>;
   },
 ): Promise<BotReplyDecision> {
   const rawSender = payload.sender?.trim() || "";
@@ -275,8 +321,6 @@ export async function determineBotReply(
   ).trim();
   const botLid = (process.env.FONNTE_BOT_LID || "").trim();
   const botIdentifiers: BotIdentifierOptions = { botPhone, botLid };
-
-
 
   // 2. Proteksi Anti-Looping: Abaikan jika pesan dikirim dari nomor bot itu sendiri
   if (botPhone) {
@@ -316,38 +360,81 @@ export async function determineBotReply(
     ? removeBotMention(rawMessage, botIdentifiers)
     : rawMessage;
 
-
   // Jika setelah mention dihapus tidak ada teks lagi (misal hanya tag @bot), beri balasan sapaan ramah
   if (!effectiveMessage) {
-    const greetingName = contactName ? ` ${contactName}` : "";
+    const greetingName = contactName ? ` kak ${contactName}` : "";
     return {
       type: "greeting",
-      replyText: `Hi kak${greetingName}, ada yg bisa dibantu?`,
+      replyText: [
+        `Halo${greetingName}! 👋`,
+        `Saya Asisten Kalender OASE UNUD. Ada yang bisa dibantu?`,
+        ``,
+        `Kamu bisa ketik:`,
+        `📌 *cek tugas* / *deadline* — melihat daftar tugas aktif OASE`,
+        `📌 Atau tanyakan apa saja seputar tugas dan perkuliahan.`,
+      ].join("\n"),
       duration: 3,
     };
   }
 
   // 4. Route 1: Keyword Sapaan
   if (GREETING_PATTERN.test(effectiveMessage)) {
-    const greetingName = contactName ? ` ${contactName}` : "";
+    const greetingName = contactName ? ` kak ${contactName}` : "";
     return {
       type: "greeting",
-      replyText: `Hi kak${greetingName}, ada yg bisa dibantu?`,
+      replyText: [
+        `Halo${greetingName}! 👋`,
+        `Saya Asisten Kalender OASE UNUD. Ada yang bisa dibantu?`,
+        ``,
+        `Kamu bisa ketik:`,
+        `📌 *cek tugas* / *deadline* — melihat daftar tugas aktif OASE`,
+        `📌 Atau tanyakan apa saja seputar tugas dan perkuliahan.`,
+      ].join("\n"),
       duration: 3,
     };
   }
 
   // 5. Route 2: Keyword Penutup
   if (CLOSING_PATTERN.test(effectiveMessage)) {
-    const closingName = contactName ? ` ${contactName}` : "";
+    const closingName = contactName ? ` kak ${contactName}` : "";
     return {
       type: "closing",
-      replyText: `Ok, kak${closingName}`,
+      replyText: `Sama-sama${closingName}! Semoga perkuliahan dan tugasnya lancar selalu. Semangat! ✨`,
       duration: 3,
     };
   }
 
-  // 6. Route 3: Tanya AI (Fallback)
+  // 6. Route 3: Pengecekan Tugas / Jadwal / Deadline OASE dari Google Calendar
+  if (OASE_SCHEDULE_PATTERN.test(effectiveMessage)) {
+    try {
+      const getUpcomingTasks =
+        deps?.getUpcomingTasksFn || getUpcomingOaseEventsFromCalendar;
+      const { tasks } = await getUpcomingTasks();
+      const replyText = buildUpcomingTasksMessage(tasks, contactName);
+      return {
+        type: "tasks",
+        replyText,
+        duration: 3,
+      };
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.warn("[OASE Calendar Check Error]:", errorMsg);
+      const greetingName = contactName ? ` kak ${contactName}` : "";
+      return {
+        type: "tasks",
+        replyText: [
+          `⚠️ *Tidak dapat memuat jadwal tugas OASE saat ini.*`,
+          ``,
+          `Kendala: ${errorMsg}`,
+          ``,
+          `Pastikan akun Google Calendar telah terhubung atau GOOGLE_REFRESH_TOKEN telah dikonfigurasi${greetingName}.`,
+        ].join("\n"),
+        duration: 3,
+      };
+    }
+  }
+
+  // 7. Route 4: Tanya AI (Fallback)
   try {
     const askAi = deps?.askAiFn || askGroqAi;
     const aiResponse = await askAi(effectiveMessage);
@@ -365,7 +452,6 @@ export async function determineBotReply(
     };
   }
 }
-
 
 /**
  * Mengirim pesan balasan WhatsApp via Fonnte API
@@ -445,6 +531,10 @@ export async function handleIncomingWhatsAppWebhook(
   deps?: {
     askAiFn?: (msg: string) => Promise<string>;
     sendReplyFn?: typeof sendFonnteReply;
+    getUpcomingTasksFn?: () => Promise<{
+      calendarFound: boolean;
+      tasks: UpcomingOaseTask[];
+    }>;
   },
 ): Promise<{
   processed: boolean;
@@ -453,6 +543,7 @@ export async function handleIncomingWhatsAppWebhook(
 }> {
   const decision = await determineBotReply(payload, {
     askAiFn: deps?.askAiFn,
+    getUpcomingTasksFn: deps?.getUpcomingTasksFn,
   });
 
   if (decision.type === "ignored" || !decision.replyText) {
