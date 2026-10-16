@@ -23,7 +23,7 @@ function loadEnvFile(filePath: string): Record<string, string> {
 async function testActions() {
   const envLocal = loadEnvFile(path.resolve(process.cwd(), '.env.local'));
   const cronSecret = process.env.CRON_SECRET || envLocal.CRON_SECRET;
-  const appUrl = process.env.VERCEL_APP_URL || envLocal.NEXT_PUBLIC_APP_URL || 'https://kalender-oase.vercel.app';
+  const appUrl = process.env.VERCEL_APP_URL || envLocal.NEXT_PUBLIC_APP_URL || 'https://oasee.vercel.app';
 
   console.log('----------------------------------------------------');
   console.log('🧪 SIMULASI TRIGGER GITHUB ACTIONS KE VERCEL');

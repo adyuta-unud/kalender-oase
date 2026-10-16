@@ -29,7 +29,7 @@ jobs:
 
           if [ -z "$BASE_URL" ]; then
             echo "ERROR: Secret VERCEL_APP_URL belum dikonfigurasi di GitHub Secrets."
-            echo "Silakan tambahkan VERCEL_APP_URL (contoh: https://kalender-oase.vercel.app)."
+            echo "Silakan tambahkan VERCEL_APP_URL (contoh: https://oasee.vercel.app)."
             exit 1
           fi
 

@@ -20,5 +20,5 @@ export function getBaseUrl(): string {
   }
 
   // 4. Fallback domain produksi default
-  return 'https://kalender-oase.vercel.app';
+  return 'https://oasee.vercel.app';
 }

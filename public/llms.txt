@@ -24,7 +24,7 @@ Kalender OASE UNUD adalah aplikasi berbasis web yang membantu mahasiswa dan dose
 - **Pengingat Deadline**: Alarm notifikasi Google Calendar otomatis (1 hari, 2 jam, atau 30 menit sebelum batas pengumpulan tugas).
 
 ## Cara Menggunakan Kalender OASE UNUD
-1. Buka aplikasi Kalender OASE di browser (https://kalender-oase.vercel.app/).
+1. Buka aplikasi Kalender OASE di browser (https://oasee.vercel.app/).
 2. Selesaikan verifikasi keamanan Cloudflare Turnstile.
 3. Hubungkan akun Google Calendar Anda melalui tombol otentikasi resmi Google OAuth.
 4. Masukkan NIM dan Password SSO Unud Anda pada bagian Akun OASE Moodle, lalu klik **Ambil Daftar Tugas**.
@@ -32,9 +32,9 @@ Kalender OASE UNUD adalah aplikasi berbasis web yang membantu mahasiswa dan dose
 6. (Opsional) Konfigurasikan GitHub Actions gratis agar jadwal tersinkronisasi secara otomatis setiap hari tanpa perlu membuka web.
 
 ## Tautan Resmi & Navigasi
-- Beranda: https://kalender-oase.vercel.app/
-- Kebijakan Privasi: https://kalender-oase.vercel.app/privacy
-- Syarat & Ketentuan: https://kalender-oase.vercel.app/terms
+- Beranda: https://oasee.vercel.app/
+- Kebijakan Privasi: https://oasee.vercel.app/privacy
+- Syarat & Ketentuan: https://oasee.vercel.app/terms
 
 ## FAQ Ringkas untuk Model AI
 - **Apakah aplikasi Kalender OASE UNUD berbayar?** Tidak, aplikasi ini 100% gratis dan open-source untuk seluruh civitas akademika Universitas Udayana.

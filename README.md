@@ -16,6 +16,7 @@ Aplikasi web modern untuk menyinkronkan jadwal perkuliahan, tenggat tugas, kuis,
 ## Fitur Utama
 
 ### 1. Sinkronisasi Kalender OASE
+
 - **Sinkronisasi Praktis:** Hubungkan akun Google, masukkan akun SSO OASE (NIM & Password), dan jadwal tugas yang belum dikerjakan langsung masuk ke Google Calendar.
 - **Filter Tugas Belum Dikerjakan & Penandaan Selesai:** Mengambil tugas aktif langsung dari API Moodle OASE (`core_calendar_get_action_events_by_timesort`). Tugas yang telah dikumpulkan otomatis ditandai `✅ [Selesai]` dan alarm pengingatnya dinonaktifkan.
 - **Pencegahan Duplikasi (Idempoten):** Mendeteksi agenda yang sudah ada agar tidak terjadi duplikasi, serta memperbarui otomatis jika ada perubahan jadwal atau revisi dari dosen.
@@ -26,20 +27,22 @@ Aplikasi web modern untuk menyinkronkan jadwal perkuliahan, tenggat tugas, kuis,
 - **Notifikasi Pengingat Google Calendar:** Opsi alarm pengingat otomatis sebelum batas pengumpulan tugas (24 jam, 2 jam, atau 30 menit sebelumnya).
 
 ### 2. Notifikasi & Chatbot Pintar WhatsApp (Fonnte + Groq AI)
+
 - **Notifikasi Tugas Baru ke WhatsApp:** Mengirimkan pesan notifikasi rapi dan bebas spam ke nomor pribadi dan/atau grup WhatsApp setiap kali ditemukan tugas baru saat proses sinkronisasi.
-- **Pengecekan Tugas / Deadline via Chat:** Mahasiswa dapat mengecek tugas langsung di WhatsApp dengan mengetik *"cek tugas"*, *"deadline"*, atau *"jadwal oase"*. Bot akan mengambil jadwal tugas aktif dari Google Calendar secara *real-time*.
+- **Pengecekan Tugas / Deadline via Chat:** Mahasiswa dapat mengecek tugas langsung di WhatsApp dengan mengetik _"cek tugas"_, _"deadline"_, atau _"jadwal oase"_. Bot akan mengambil jadwal tugas aktif dari Google Calendar secara _real-time_.
 - **Asisten AI Terintegrasi (Groq Cloud):** Menjawab pertanyaan seputar perkuliahan dan informasi akademik dengan bahasa Indonesia yang natural, ramah, dan ringkas.
 - **Filter Mention Grup yang Presisi:** Di dalam grup WhatsApp, bot **hanya merespons jika dimention** (berdasarkan WhatsApp LID bot `@127020...`, nomor bot `@628...`, atau tag `@bot`). Percakapan antar anggota grup lainnya tidak akan dibalas sehingga menghemat kuota Fonnte.
-- **Kutip Balasan (Quoted Reply):** Setiap balasan bot dikirimkan berupa *reply* ke pesan pengguna (memanfaatkan `inboxid`), baik di chat pribadi maupun di grup.
+- **Kutip Balasan (Quoted Reply):** Setiap balasan bot dikirimkan berupa _reply_ ke pesan pengguna (memanfaatkan `inboxid`), baik di chat pribadi maupun di grup.
 - **Proteksi Anti-Looping:** Mencegah bot membalas pesannya sendiri secara berulang jika nomor pengirim sama dengan nomor bot.
 
 ### 3. Keamanan & Performa
+
 - **Aman & Stateless:**
   - **Tanpa Database Server:** Tidak menyimpan email, kata sandi, atau data pribadi di database terpusat.
   - **Penyimpanan Lokal Opsional:** Kredensial SSO disimpan di `localStorage` peramban pengguna hanya jika mencentang opsi simpan.
   - **Cookie Terenkripsi:** Menggunakan enkripsi `AES-256-GCM` dengan atribut `HttpOnly`, `SameSite=Lax`, dan `Secure`.
   - **Rate Limiting & Anti-Bot:** Dilengkapi pembatasan request per IP dan verifikasi keamanan Cloudflare Turnstile.
-  - **Otentikasi Webhook Aman:** Dilindungi verifikasi `FONNTE_WEBHOOK_SECRET` dengan *timing-safe comparison* untuk mencegah *timing attacks*.
+  - **Otentikasi Webhook Aman:** Dilindungi verifikasi `FONNTE_WEBHOOK_SECRET` dengan _timing-safe comparison_ untuk mencegah _timing attacks_.
 - **Otomatisasi Terjadwal (GitHub Actions & Cron-Job):** Mendukung sinkronisasi berkala di latar belakang tanpa harus membuka web setiap hari.
 
 ---
@@ -191,14 +194,17 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 ## Otomatisasi Sinkronisasi
 
 ### GitHub Actions
+
 Anda dapat mengaktifkan sinkronisasi otomatis menggunakan GitHub Actions gratis:
+
 1. Buka repositori Anda di GitHub > **Settings** > **Secrets and variables** > **Actions**.
 2. Tambahkan Repository Secrets:
-   - `VERCEL_APP_URL`: URL aplikasi Anda di Vercel (contoh: `https://kalender-oase.vercel.app`)
+   - `VERCEL_APP_URL`: URL aplikasi Anda di Vercel (contoh: `https://oasee.vercel.app`)
    - `CRON_SECRET`: Secret token yang sama dengan `CRON_SECRET` di Vercel
 3. Workflow di `.github/workflows/sync.yml` akan secara otomatis memicu sinkronisasi berkala ke server Vercel Anda.
 
 ### Cron-Job.org (Opsional)
+
 Gunakan [cron-job.org](https://console.cron-job.org/) untuk menjadwalkan trigger API GitHub Actions atau endpoint `/api/cron/sync` dengan header Authorization `Bearer your-cron-secret` agar sinkronisasi selalu berjalan tepat waktu.
 
 ---
@@ -230,4 +236,3 @@ Informasi lebih lanjut dapat dilihat pada halaman [Privacy Policy](/privacy) dan
 ## Lisensi
 
 Didistribusikan di bawah lisensi [MIT](LICENSE).
-

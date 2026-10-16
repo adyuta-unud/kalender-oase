@@ -215,7 +215,7 @@ export function GithubActionsModal({
                 </div>
                 <div className="text-sm text-slate-500">
                   Domain aplikasi Anda di Vercel (contoh:{" "}
-                  <code>https://kalender-oase.vercel.app</code>).
+                  <code>https://oasee.vercel.app</code>).
                 </div>
               </div>
 
