@@ -215,26 +215,53 @@ test("WhatsApp Webhook Secret: enforces secret authentication securely", () => {
 });
 
 test("WhatsApp Group Mention: isBotMentionedInGroup detects mentions properly", () => {
-  const botNumber = "6285123456789";
+  const botNumber = "6285187976800";
+  const botLid = "127020117803175";
+  const identifiers = { botPhone: botNumber, botLid };
 
-  // Mention dengan format 62...
-  assert.equal(isBotMentionedInGroup("@6285123456789 halo", botNumber), true);
-  // Mention dengan format 08...
-  assert.equal(isBotMentionedInGroup("@085123456789 apa kabar?", botNumber), true);
-  // Mention dengan tag @bot
-  assert.equal(isBotMentionedInGroup("@bot tolong infokan jadwal", botNumber), true);
-  // Pesan tanpa mention bot
-  assert.equal(isBotMentionedInGroup("halo semua teman-teman", botNumber), false);
-  // Mention nomor lain
-  assert.equal(isBotMentionedInGroup("@628111111111 halo", botNumber), false);
+  // 1. Mention dengan WhatsApp LID bot @127020117803175 -> HARUS TRUE
+  assert.equal(
+    isBotMentionedInGroup("@127020117803175 apa nama model AI anda?", identifiers),
+    true
+  );
+
+  // 2. Mention LID orang lain (misal Oka @235983186452529) -> HARUS FALSE (tidak membalas)
+  assert.equal(
+    isBotMentionedInGroup("@235983186452529 halo Oka", identifiers),
+    false
+  );
+
+  // 3. Mention nomor bot (@6285187976800 atau @085187976800) -> HARUS TRUE
+  assert.equal(isBotMentionedInGroup("@6285187976800 halo", identifiers), true);
+  assert.equal(isBotMentionedInGroup("@085187976800 apa kabar?", identifiers), true);
+
+  // 4. Mention tag @bot -> HARUS TRUE
+  assert.equal(isBotMentionedInGroup("@bot tolong infokan jadwal", identifiers), true);
+
+  // 5. Mention nomor orang lain (@628111111111) -> HARUS FALSE
+  assert.equal(isBotMentionedInGroup("@628111111111 halo", identifiers), false);
+
+  // 6. Pesan biasa tanpa mention -> HARUS FALSE
+  assert.equal(isBotMentionedInGroup("halo semua teman-teman", identifiers), false);
 });
 
 test("WhatsApp Group Mention: removeBotMention cleans mention tags", () => {
-  const botNumber = "6285123456789";
-  assert.equal(removeBotMention("@6285123456789 Halo kak", botNumber), "Halo kak");
-  assert.equal(removeBotMention("@bot kapan deadline tugas?", botNumber), "kapan deadline tugas?");
-  assert.equal(removeBotMention("@085123456789", botNumber), "");
+  const identifiers = { botPhone: "6285187976800", botLid: "127020117803175" };
+  assert.equal(
+    removeBotMention("@127020117803175 apa nama model AI anda?", identifiers),
+    "apa nama model AI anda?"
+  );
+  assert.equal(removeBotMention("@6285187976800 Halo kak", identifiers), "Halo kak");
+  assert.equal(removeBotMention("@bot kapan deadline tugas?", identifiers), "kapan deadline tugas?");
+  assert.equal(removeBotMention("@085187976800", identifiers), "");
+
+  // Jangan menghapus mention orang lain
+  assert.equal(
+    removeBotMention("halo @235983186452529 apa kabar?", identifiers),
+    "halo @235983186452529 apa kabar?"
+  );
 });
+
 
 test("WhatsApp Group Reply: responds only when bot is mentioned in group", async () => {
   const groupJid = "120363429059412433@g.us";
@@ -298,5 +325,111 @@ test("WhatsApp Group Reply: responds only when bot is mentioned in group", async
   assert.equal(resSelfInGroup.type, "ignored");
   assert.ok(resSelfInGroup.reason?.includes("anti-loop"));
 });
+
+test("WhatsApp Group Real Webhook: handles user exact LID mention and non-mention payloads", async () => {
+  const originalBotLid = process.env.FONNTE_BOT_LID;
+  process.env.FONNTE_BOT_LID = "127020117803175";
+
+  try {
+    // Contoh 1: Payload DIMENTION dari webhook nyata Fonnte
+    const mentionPayload = {
+      choices: [],
+      device: "6285187976800",
+      extension: "",
+      filename: "",
+      inboxid: 0,
+      isforwarded: false,
+      isgroup: true,
+      location: "",
+      member: "6285805945279",
+      memberlid: "235983186452529@lid",
+      message: "@127020117803175 apa nama model AI anda?",
+      mode: "lid",
+      name: "Oka",
+      pengirim: "120363410925013058@g.us",
+      pesan: "@127020117803175 apa nama model AI anda?",
+      pollname: "",
+      pushname: "Oka",
+      quick: false,
+      sender: "120363410925013058@g.us",
+      senderlid: "120363410925013058@g.us",
+      text: "non-button message",
+      timestamp: 1792133166,
+      type: "text",
+      url: "",
+      username: "6285805945279",
+    };
+
+    let cleanedAiPrompt = "";
+    let targetSent = "";
+    let messageSent = "";
+
+    const mockAi = async (msg: string) => {
+      cleanedAiPrompt = msg;
+      return "Saya ditenagai oleh model AI Qwen.";
+    };
+
+    const mockSendReply = async (target: string, msg: string) => {
+      targetSent = target;
+      messageSent = msg;
+      return { success: true };
+    };
+
+    const resMentioned = await handleIncomingWhatsAppWebhook(mentionPayload, {
+      askAiFn: mockAi,
+      sendReplyFn: mockSendReply as typeof sendFonnteReply,
+    });
+
+    assert.equal(resMentioned.processed, true, "Pesan grup dengan mention harus diproses");
+    assert.equal(resMentioned.decision.type, "ai");
+    assert.equal(
+      cleanedAiPrompt,
+      "apa nama model AI anda?",
+      "Tag LID @127020117803175 harus dibersihkan dari prompt AI"
+    );
+    assert.equal(targetSent, "120363410925013058@g.us", "Balasan harus dikirim ke grup target");
+    assert.equal(messageSent, "Saya ditenagai oleh model AI Qwen.");
+
+    // Contoh 2: Payload TIDAK DIMENTION dari webhook nyata Fonnte
+    const noMentionPayload = {
+      choices: [],
+      device: "6285187976800",
+      extension: "",
+      filename: "",
+      inboxid: 0,
+      isforwarded: false,
+      isgroup: true,
+      location: "",
+      member: "6285805945279",
+      memberlid: "235983186452529@lid",
+      message: "halo guys",
+      mode: "lid",
+      name: "Oka",
+      pengirim: "120363410925013058@g.us",
+      pesan: "halo guys",
+      pollname: "",
+      pushname: "Oka",
+      quick: false,
+      sender: "120363410925013058@g.us",
+      senderlid: "120363410925013058@g.us",
+      text: "non-button message",
+      timestamp: 1792132799,
+      type: "text",
+      url: "",
+      username: "6285805945279",
+    };
+
+    const resNotMentioned = await handleIncomingWhatsAppWebhook(noMentionPayload);
+    assert.equal(
+      resNotMentioned.processed,
+      false,
+      "Pesan grup tanpa mention harus diabaikan dan tidak dibalas"
+    );
+    assert.equal(resNotMentioned.decision.type, "ignored");
+  } finally {
+    process.env.FONNTE_BOT_LID = originalBotLid;
+  }
+});
+
 
 

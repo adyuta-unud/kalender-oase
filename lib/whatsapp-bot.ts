@@ -124,50 +124,45 @@ export async function askGroqAi(
   return replyContent.trim();
 }
 
+export interface BotIdentifierOptions {
+  botPhone?: string;
+  botLid?: string;
+}
+
 /**
- * Memeriksa apakah bot di-mention di dalam pesan grup
- * Mendukung format: @628123456789, @08123456789, @8123456789, atau @bot
+ * Memeriksa apakah bot di-mention di dalam pesan grup.
+ * HANYA merespons jika pesan secara spesifik me-mention:
+ * 1. ID WhatsApp LID milik Bot (dari FONNTE_BOT_LID di env)
+ * 2. Nomor telepon WhatsApp milik Bot (@6285187976800, @085187976800, dll.)
+ * 3. Tag @bot
+ *
+ * Mention ke anggota grup lain (misal @235983186452529 atau @628111111111) akan diabaikan (false).
  */
 export function isBotMentionedInGroup(
   message: string,
-  botPhone?: string,
+  identifiers?: BotIdentifierOptions | string,
 ): boolean {
   if (!message) return false;
 
-  if (botPhone) {
-    const cleanedDigits = botPhone.replace(/\D/g, "");
-    if (cleanedDigits) {
-      const localFormat = cleanedDigits.startsWith("62")
-        ? "0" + cleanedDigits.slice(2)
-        : cleanedDigits;
-      const noPrefix = cleanedDigits.startsWith("62")
-        ? cleanedDigits.slice(2)
-        : cleanedDigits.startsWith("0")
-          ? cleanedDigits.slice(1)
-          : cleanedDigits;
+  const botPhone =
+    typeof identifiers === "string" ? identifiers : identifiers?.botPhone;
+  const botLid =
+    (typeof identifiers === "object"
+      ? identifiers?.botLid
+      : undefined) || process.env.FONNTE_BOT_LID;
 
-      const pattern = new RegExp(
-        `@(?:${cleanedDigits}|${localFormat}|${noPrefix}|bot)\\b`,
-        "i",
-      );
-      return pattern.test(message);
+  // 1. Cek kecocokan eksplisit dengan ID Bot (LID WhatsApp dari environment)
+  if (botLid?.trim()) {
+    const cleanedLid = botLid.trim().replace(/\D/g, "");
+    if (cleanedLid) {
+      const lidRegex = new RegExp(`@${cleanedLid}\\b`, "i");
+      if (lidRegex.test(message)) return true;
     }
   }
 
-  // Fallback jika nomor bot sama sekali tidak diketahui: periksa mention @bot atau @nomor
-  return /@(?:bot|\d{8,16})\b/i.test(message);
-}
-
-
-/**
- * Menghapus tag mention bot dari pesan teks agar tidak mengganggu pencocokan kata kunci atau prompt AI
- */
-export function removeBotMention(message: string, botPhone?: string): string {
-  if (!message) return "";
-
-  let cleaned = message;
-  if (botPhone) {
-    const cleanedDigits = botPhone.replace(/\D/g, "");
+  // 2. Cek kecocokan dengan nomor telepon bot jika ada
+  if (botPhone?.trim()) {
+    const cleanedDigits = botPhone.trim().replace(/\D/g, "");
     if (cleanedDigits) {
       const localFormat = cleanedDigits.startsWith("62")
         ? "0" + cleanedDigits.slice(2)
@@ -179,15 +174,73 @@ export function removeBotMention(message: string, botPhone?: string): string {
           : cleanedDigits;
 
       const pattern = new RegExp(
-        `@(?:${cleanedDigits}|${localFormat}|${noPrefix}|bot)\\b`,
+        `@(?:${cleanedDigits}|${localFormat}|${noPrefix})\\b`,
+        "i",
+      );
+      if (pattern.test(message)) return true;
+    }
+  }
+
+  // 3. Cek tag @bot
+  if (/@bot\b/i.test(message)) {
+    return true;
+  }
+
+  // Jika tidak me-mention ID bot, nomor bot, atau @bot -> abaikan
+  return false;
+}
+
+/**
+ * Menghapus tag mention bot (@LID, @nomor, atau @bot) dari pesan teks
+ * agar router sapaan/penutup dan prompt AI memproses isi pesan murni.
+ */
+export function removeBotMention(
+  message: string,
+  identifiers?: BotIdentifierOptions | string,
+): string {
+  if (!message) return "";
+
+  const botPhone =
+    typeof identifiers === "string" ? identifiers : identifiers?.botPhone;
+  const botLid =
+    (typeof identifiers === "object"
+      ? identifiers?.botLid
+      : undefined) || process.env.FONNTE_BOT_LID;
+
+  let cleaned = message;
+
+  // 1. Hapus mention LID bot
+  if (botLid?.trim()) {
+    const cleanedLid = botLid.trim().replace(/\D/g, "");
+    if (cleanedLid) {
+      cleaned = cleaned.replace(new RegExp(`@${cleanedLid}\\b`, "gi"), "");
+    }
+  }
+
+  // 2. Hapus mention nomor telepon bot
+  if (botPhone?.trim()) {
+    const cleanedDigits = botPhone.trim().replace(/\D/g, "");
+    if (cleanedDigits) {
+      const localFormat = cleanedDigits.startsWith("62")
+        ? "0" + cleanedDigits.slice(2)
+        : cleanedDigits;
+      const noPrefix = cleanedDigits.startsWith("62")
+        ? cleanedDigits.slice(2)
+        : cleanedDigits.startsWith("0")
+          ? cleanedDigits.slice(1)
+          : cleanedDigits;
+
+      const pattern = new RegExp(
+        `@(?:${cleanedDigits}|${localFormat}|${noPrefix})\\b`,
         "gi",
       );
       cleaned = cleaned.replace(pattern, "");
     }
   }
 
-  // Bersihkan sisa mention @bot jika ada
+  // 3. Hapus tag @bot
   cleaned = cleaned.replace(/@bot\b/gi, "");
+
   return cleaned.trim();
 }
 
@@ -219,6 +272,10 @@ export async function determineBotReply(
     process.env.FONNTE_TARGET_PHONE ||
     ""
   ).trim();
+  const botLid = (process.env.FONNTE_BOT_LID || "").trim();
+  const botIdentifiers: BotIdentifierOptions = { botPhone, botLid };
+
+
 
   // 2. Proteksi Anti-Looping: Abaikan jika pesan dikirim dari nomor bot itu sendiri
   if (botPhone) {
@@ -245,7 +302,7 @@ export async function determineBotReply(
 
   // 3. Khusus Pesan Grup: Hanya respon jika bot di-mention di dalam grup
   if (isGroup) {
-    if (!isBotMentionedInGroup(rawMessage, botPhone)) {
+    if (!isBotMentionedInGroup(rawMessage, botIdentifiers)) {
       return {
         type: "ignored",
         reason: "Pesan grup diabaikan karena bot tidak dimention.",
@@ -255,8 +312,9 @@ export async function determineBotReply(
 
   // Bersihkan mention bot dari pesan jika di grup
   const effectiveMessage = isGroup
-    ? removeBotMention(rawMessage, botPhone)
+    ? removeBotMention(rawMessage, botIdentifiers)
     : rawMessage;
+
 
   // Jika setelah mention dihapus tidak ada teks lagi (misal hanya tag @bot), beri balasan sapaan ramah
   if (!effectiveMessage) {
