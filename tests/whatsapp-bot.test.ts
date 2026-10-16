@@ -8,7 +8,10 @@ import {
   sendFonnteReply,
   handleIncomingWhatsAppWebhook,
   validateWebhookSecret,
+  isBotMentionedInGroup,
+  removeBotMention,
 } from "../lib/whatsapp-bot.ts";
+
 
 
 test("WhatsApp Bot: GREETING_PATTERN matches standard greeting words", () => {
@@ -210,4 +213,90 @@ test("WhatsApp Webhook Secret: enforces secret authentication securely", () => {
   assert.equal(resUnconfigured.authorized, false);
   assert.ok(resUnconfigured.error?.includes("belum lengkap"));
 });
+
+test("WhatsApp Group Mention: isBotMentionedInGroup detects mentions properly", () => {
+  const botNumber = "6285123456789";
+
+  // Mention dengan format 62...
+  assert.equal(isBotMentionedInGroup("@6285123456789 halo", botNumber), true);
+  // Mention dengan format 08...
+  assert.equal(isBotMentionedInGroup("@085123456789 apa kabar?", botNumber), true);
+  // Mention dengan tag @bot
+  assert.equal(isBotMentionedInGroup("@bot tolong infokan jadwal", botNumber), true);
+  // Pesan tanpa mention bot
+  assert.equal(isBotMentionedInGroup("halo semua teman-teman", botNumber), false);
+  // Mention nomor lain
+  assert.equal(isBotMentionedInGroup("@628111111111 halo", botNumber), false);
+});
+
+test("WhatsApp Group Mention: removeBotMention cleans mention tags", () => {
+  const botNumber = "6285123456789";
+  assert.equal(removeBotMention("@6285123456789 Halo kak", botNumber), "Halo kak");
+  assert.equal(removeBotMention("@bot kapan deadline tugas?", botNumber), "kapan deadline tugas?");
+  assert.equal(removeBotMention("@085123456789", botNumber), "");
+});
+
+test("WhatsApp Group Reply: responds only when bot is mentioned in group", async () => {
+  const groupJid = "120363429059412433@g.us";
+  const botDevice = "6285123456789";
+
+  // 1. Pesan grup TANPA mention bot -> HARUS DIABAIKAN (ignored)
+  const resNoMention = await determineBotReply({
+    sender: groupJid,
+    isgroup: true,
+    device: botDevice,
+    member: "6281234567890",
+    message: "Halo semuanya selamat pagi",
+    name: "Rudi",
+  });
+  assert.equal(resNoMention.type, "ignored");
+  assert.ok(resNoMention.reason?.includes("bot tidak dimention"));
+
+  // 2. Pesan grup DENGAN mention bot untuk Sapaan -> HARUS DIBALAS (greeting)
+  const resWithMention = await determineBotReply({
+    sender: groupJid,
+    isgroup: true,
+    device: botDevice,
+    member: "6281234567890",
+    message: "@6285123456789 Halo",
+    name: "Rudi",
+  });
+  assert.equal(resWithMention.type, "greeting");
+  assert.equal(resWithMention.replyText, "Hi kak Rudi, ada yg bisa dibantu?");
+
+  // 3. Pesan grup DENGAN mention bot untuk AI
+  let aiCalled = false;
+  const mockAi = async (msg: string) => {
+    aiCalled = true;
+    assert.equal(msg, "kapan deadline praktikum?");
+    return "Deadline praktikum adalah hari Jumat pukul 23:59 WITA.";
+  };
+
+  const resAi = await determineBotReply(
+    {
+      sender: groupJid,
+      isgroup: true,
+      device: botDevice,
+      member: "6281234567890",
+      message: "@6285123456789 kapan deadline praktikum?",
+      name: "Rudi",
+    },
+    { askAiFn: mockAi }
+  );
+  assert.equal(resAi.type, "ai");
+  assert.equal(aiCalled, true);
+  assert.equal(resAi.replyText, "Deadline praktikum adalah hari Jumat pukul 23:59 WITA.");
+
+  // 4. Anti-loop di grup: Pesan yang dikirim oleh nomor bot sendiri di dalam grup harus diabaikan
+  const resSelfInGroup = await determineBotReply({
+    sender: groupJid,
+    isgroup: true,
+    device: botDevice,
+    member: botDevice,
+    message: "@6285123456789 halo",
+  });
+  assert.equal(resSelfInGroup.type, "ignored");
+  assert.ok(resSelfInGroup.reason?.includes("anti-loop"));
+});
+
 

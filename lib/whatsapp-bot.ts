@@ -125,6 +125,73 @@ export async function askGroqAi(
 }
 
 /**
+ * Memeriksa apakah bot di-mention di dalam pesan grup
+ * Mendukung format: @628123456789, @08123456789, @8123456789, atau @bot
+ */
+export function isBotMentionedInGroup(
+  message: string,
+  botPhone?: string,
+): boolean {
+  if (!message) return false;
+
+  if (botPhone) {
+    const cleanedDigits = botPhone.replace(/\D/g, "");
+    if (cleanedDigits) {
+      const localFormat = cleanedDigits.startsWith("62")
+        ? "0" + cleanedDigits.slice(2)
+        : cleanedDigits;
+      const noPrefix = cleanedDigits.startsWith("62")
+        ? cleanedDigits.slice(2)
+        : cleanedDigits.startsWith("0")
+          ? cleanedDigits.slice(1)
+          : cleanedDigits;
+
+      const pattern = new RegExp(
+        `@(?:${cleanedDigits}|${localFormat}|${noPrefix}|bot)\\b`,
+        "i",
+      );
+      return pattern.test(message);
+    }
+  }
+
+  // Fallback jika nomor bot sama sekali tidak diketahui: periksa mention @bot atau @nomor
+  return /@(?:bot|\d{8,16})\b/i.test(message);
+}
+
+
+/**
+ * Menghapus tag mention bot dari pesan teks agar tidak mengganggu pencocokan kata kunci atau prompt AI
+ */
+export function removeBotMention(message: string, botPhone?: string): string {
+  if (!message) return "";
+
+  let cleaned = message;
+  if (botPhone) {
+    const cleanedDigits = botPhone.replace(/\D/g, "");
+    if (cleanedDigits) {
+      const localFormat = cleanedDigits.startsWith("62")
+        ? "0" + cleanedDigits.slice(2)
+        : cleanedDigits;
+      const noPrefix = cleanedDigits.startsWith("62")
+        ? cleanedDigits.slice(2)
+        : cleanedDigits.startsWith("0")
+          ? cleanedDigits.slice(1)
+          : cleanedDigits;
+
+      const pattern = new RegExp(
+        `@(?:${cleanedDigits}|${localFormat}|${noPrefix}|bot)\\b`,
+        "gi",
+      );
+      cleaned = cleaned.replace(pattern, "");
+    }
+  }
+
+  // Bersihkan sisa mention @bot jika ada
+  cleaned = cleaned.replace(/@bot\b/gi, "");
+  return cleaned.trim();
+}
+
+/**
  * Menentukan isi pesan balasan bot berdasarkan aturan router blueprint
  */
 export async function determineBotReply(
@@ -136,6 +203,7 @@ export async function determineBotReply(
   const rawSender = payload.sender?.trim() || "";
   const rawMessage = payload.message?.trim() || "";
   const contactName = payload.name?.trim() || "";
+  const isGroup = Boolean(payload.isgroup || rawSender.endsWith("@g.us"));
 
   // 1. Abaikan jika pesan kosong atau pengirim tidak tertera
   if (!rawSender || !rawMessage) {
@@ -145,16 +213,53 @@ export async function determineBotReply(
     };
   }
 
+  const botPhone = (
+    payload.device ||
+    process.env.FONNTE_BOT_PHONE ||
+    process.env.FONNTE_TARGET_PHONE ||
+    ""
+  ).trim();
+
   // 2. Proteksi Anti-Looping: Abaikan jika pesan dikirim dari nomor bot itu sendiri
-  if (payload.device && rawSender === payload.device.trim()) {
-    return {
-      type: "ignored",
-      reason: "Pesan berasal dari nomor bot sendiri (anti-loop).",
-    };
+  if (botPhone) {
+    const cleanedBot = botPhone.replace(/\D/g, "");
+    // Kasus chat personal: rawSender adalah nomor bot
+    if (!isGroup && rawSender.replace(/\D/g, "") === cleanedBot) {
+      return {
+        type: "ignored",
+        reason: "Pesan berasal dari nomor bot sendiri (anti-loop).",
+      };
+    }
+    // Kasus grup: payload.member adalah nomor pengirim di grup
+    if (
+      isGroup &&
+      payload.member &&
+      payload.member.replace(/\D/g, "") === cleanedBot
+    ) {
+      return {
+        type: "ignored",
+        reason: "Pesan grup berasal dari nomor bot sendiri (anti-loop).",
+      };
+    }
   }
 
-  // 3. Route 1: Keyword Sapaan
-  if (GREETING_PATTERN.test(rawMessage)) {
+  // 3. Khusus Pesan Grup: Hanya respon jika bot di-mention di dalam grup
+  if (isGroup) {
+    if (!isBotMentionedInGroup(rawMessage, botPhone)) {
+      return {
+        type: "ignored",
+        reason: "Pesan grup diabaikan karena bot tidak dimention.",
+      };
+    }
+  }
+
+  // Bersihkan mention bot dari pesan jika di grup
+  const effectiveMessage = isGroup
+    ? removeBotMention(rawMessage, botPhone)
+    : rawMessage;
+
+  // Jika setelah mention dihapus tidak ada teks lagi (misal hanya tag @bot), beri balasan sapaan ramah
+  if (!effectiveMessage) {
     const greetingName = contactName ? ` ${contactName}` : "";
     return {
       type: "greeting",
@@ -163,8 +268,18 @@ export async function determineBotReply(
     };
   }
 
-  // 4. Route 2: Keyword Penutup
-  if (CLOSING_PATTERN.test(rawMessage)) {
+  // 4. Route 1: Keyword Sapaan
+  if (GREETING_PATTERN.test(effectiveMessage)) {
+    const greetingName = contactName ? ` ${contactName}` : "";
+    return {
+      type: "greeting",
+      replyText: `Hi kak${greetingName}, ada yg bisa dibantu?`,
+      duration: 3,
+    };
+  }
+
+  // 5. Route 2: Keyword Penutup
+  if (CLOSING_PATTERN.test(effectiveMessage)) {
     const closingName = contactName ? ` ${contactName}` : "";
     return {
       type: "closing",
@@ -173,10 +288,10 @@ export async function determineBotReply(
     };
   }
 
-  // 5. Route 3: Tanya AI (Fallback)
+  // 6. Route 3: Tanya AI (Fallback)
   try {
     const askAi = deps?.askAiFn || askGroqAi;
-    const aiResponse = await askAi(rawMessage);
+    const aiResponse = await askAi(effectiveMessage);
     return {
       type: "ai",
       replyText: aiResponse,
@@ -191,6 +306,7 @@ export async function determineBotReply(
     };
   }
 }
+
 
 /**
  * Mengirim pesan balasan WhatsApp via Fonnte API
