@@ -61,6 +61,9 @@ async function parseIncomingPayload(
       if (typeof value === "string") {
         if (key === "isgroup") {
           payload.isgroup = value === "true" || value === "1";
+        } else if (key === "inboxid") {
+          const parsed = Number.parseInt(value, 10);
+          payload.inboxid = Number.isNaN(parsed) ? value : parsed;
         } else {
           payload[key] = value;
         }

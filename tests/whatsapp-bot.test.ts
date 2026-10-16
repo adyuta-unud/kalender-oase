@@ -131,6 +131,7 @@ test("WhatsApp Bot: sendFonnteReply submits valid multipart payload to Fonnte", 
     const res = await sendFonnteReply("081234567890", "Pesan uji coba", {
       token: "test-fonnte-token",
       duration: 5,
+      inboxid: 235729608,
     });
 
     assert.equal(res.success, true);
@@ -141,6 +142,7 @@ test("WhatsApp Bot: sendFonnteReply submits valid multipart payload to Fonnte", 
     assert.equal(fd.get("message"), "Pesan uji coba");
     assert.equal(fd.get("typing"), "true");
     assert.equal(fd.get("duration"), "5");
+    assert.equal(fd.get("inboxid"), "235729608");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -149,10 +151,16 @@ test("WhatsApp Bot: sendFonnteReply submits valid multipart payload to Fonnte", 
 test("WhatsApp Bot: handleIncomingWhatsAppWebhook handles complete execution flow", async () => {
   let sentTarget = "";
   let sentMessage = "";
+  let capturedOpts: { duration?: number; inboxid?: number | string } | undefined;
 
-  const mockSendReply: typeof sendFonnteReply = async (target: string, msg: string) => {
+  const mockSendReply = async (
+    target: string,
+    msg: string,
+    opts?: { duration?: number; inboxid?: number | string }
+  ) => {
     sentTarget = target;
     sentMessage = msg;
+    capturedOpts = opts;
     return { success: true };
   };
 
@@ -161,15 +169,16 @@ test("WhatsApp Bot: handleIncomingWhatsAppWebhook handles complete execution flo
       sender: "6281234567890",
       message: "hi",
       name: "Andi",
+      inboxid: 998877,
     },
-    { sendReplyFn: mockSendReply }
+    { sendReplyFn: mockSendReply as typeof sendFonnteReply }
   );
-
 
   assert.equal(result.processed, true);
   assert.equal(result.decision.type, "greeting");
   assert.equal(sentTarget, "6281234567890");
   assert.equal(sentMessage, "Hi kak Andi, ada yg bisa dibantu?");
+  assert.equal(capturedOpts?.inboxid, 998877, "inboxid pada chat personal harus diteruskan untuk quoted reply");
 });
 
 test("WhatsApp Bot: askGroqAi parses valid Groq OpenAI response", async () => {
@@ -331,13 +340,13 @@ test("WhatsApp Group Real Webhook: handles user exact LID mention and non-mentio
   process.env.FONNTE_BOT_LID = "127020117803175";
 
   try {
-    // Contoh 1: Payload DIMENTION dari webhook nyata Fonnte
+    // Contoh 1: Payload DIMENTION dari webhook nyata Fonnte (dengan inboxid)
     const mentionPayload = {
       choices: [],
       device: "6285187976800",
       extension: "",
       filename: "",
-      inboxid: 0,
+      inboxid: 235729608,
       isforwarded: false,
       isgroup: true,
       location: "",
@@ -363,15 +372,21 @@ test("WhatsApp Group Real Webhook: handles user exact LID mention and non-mentio
     let cleanedAiPrompt = "";
     let targetSent = "";
     let messageSent = "";
+    let capturedOptions: { duration?: number; inboxid?: number | string } | undefined;
 
     const mockAi = async (msg: string) => {
       cleanedAiPrompt = msg;
       return "Saya ditenagai oleh model AI Qwen.";
     };
 
-    const mockSendReply = async (target: string, msg: string) => {
+    const mockSendReply = async (
+      target: string,
+      msg: string,
+      opts?: { duration?: number; inboxid?: number | string }
+    ) => {
       targetSent = target;
       messageSent = msg;
+      capturedOptions = opts;
       return { success: true };
     };
 
@@ -389,6 +404,11 @@ test("WhatsApp Group Real Webhook: handles user exact LID mention and non-mentio
     );
     assert.equal(targetSent, "120363410925013058@g.us", "Balasan harus dikirim ke grup target");
     assert.equal(messageSent, "Saya ditenagai oleh model AI Qwen.");
+    assert.equal(
+      capturedOptions?.inboxid,
+      235729608,
+      "inboxid harus diteruskan agar bot mereply pesan spesifik (quoted reply)"
+    );
 
     // Contoh 2: Payload TIDAK DIMENTION dari webhook nyata Fonnte
     const noMentionPayload = {

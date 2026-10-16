@@ -49,6 +49,7 @@ export interface IncomingWhatsAppPayload {
   device?: string;
   isgroup?: boolean;
   member?: string;
+  inboxid?: number | string;
   [key: string]: unknown;
 }
 
@@ -375,6 +376,7 @@ export async function sendFonnteReply(
   options?: {
     token?: string;
     duration?: number;
+    inboxid?: number | string;
   },
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
   const token = (options?.token || process.env.FONNTE_TOKEN)
@@ -397,6 +399,18 @@ export async function sendFonnteReply(
   formData.append("countryCode", "62");
   formData.append("typing", "true");
   formData.append("duration", String(duration));
+
+  const rawInboxId = options?.inboxid;
+  const parsedInboxId =
+    typeof rawInboxId === "number"
+      ? rawInboxId
+      : typeof rawInboxId === "string"
+        ? Number.parseInt(rawInboxId, 10)
+        : undefined;
+
+  if (parsedInboxId && !Number.isNaN(parsedInboxId) && parsedInboxId > 0) {
+    formData.append("inboxid", String(parsedInboxId));
+  }
 
   try {
     const res = await fetch("https://api.fonnte.com/send", {
@@ -452,6 +466,7 @@ export async function handleIncomingWhatsAppWebhook(
   const sendFn = deps?.sendReplyFn || sendFonnteReply;
   const sendResult = await sendFn(sender, decision.replyText, {
     duration: decision.duration,
+    inboxid: payload.inboxid,
   });
 
   return {
