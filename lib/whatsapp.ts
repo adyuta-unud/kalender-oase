@@ -53,6 +53,27 @@ export function buildNewTasksMessage(tasks: OaseEvent[]): string {
   ].join("\n");
 }
 
+/**
+ * Normalisasi daftar target WhatsApp (mendukung nomor HP Indonesia & ID Grup WhatsApp)
+ */
+export function normalizeWhatsAppTarget(input: string): string {
+  const parts = input.split(",").map((p) => p.trim()).filter(Boolean);
+  const normalizedParts = parts.map((part) => {
+    // Jika merupakan Group ID atau memuat @ (misal: 120363429059412433@g.us)
+    if (part.includes("@")) {
+      return part;
+    }
+    // Jika nomor telepon biasa
+    let cleaned = part.replace(/\D/g, "");
+    if (cleaned.startsWith("0")) {
+      cleaned = "62" + cleaned.slice(1);
+    }
+    return cleaned;
+  });
+
+  return Array.from(new Set(normalizedParts)).join(",");
+}
+
 export interface WhatsAppSendResult {
   sent: boolean;
   reason?: string;
@@ -62,13 +83,14 @@ export interface WhatsAppSendResult {
 }
 
 /**
- * Mengirimkan pesan WhatsApp ke nomor pengguna via Fonnte API jika ada tugas baru
+ * Mengirimkan pesan WhatsApp ke nomor pengguna dan/atau grup via Fonnte API jika ada tugas baru
  */
 export async function sendWhatsAppNewTasksNotification(
   newTasks: OaseEvent[],
   options?: {
     token?: string;
     targetPhone?: string;
+    groupId?: string;
   },
 ): Promise<WhatsAppSendResult> {
   // Jika tidak ada tugas baru, tidak perlu mengirim pesan
@@ -79,38 +101,61 @@ export async function sendWhatsAppNewTasksNotification(
   const token = (options?.token || process.env.FONNTE_TOKEN)
     ?.trim()
     .replace(/^["']|["']$/g, "");
-  const targetPhone = (options?.targetPhone || process.env.FONNTE_TARGET_PHONE)
+
+  const rawPhone = (
+    options?.targetPhone !== undefined
+      ? options.targetPhone
+      : process.env.FONNTE_TARGET_PHONE
+  )
     ?.trim()
     .replace(/^["']|["']$/g, "");
 
-  // Jika kredensial belum disetel di environment variables, lewati secara halus
-  if (!token || !targetPhone) {
+  // ID Grup WhatsApp (opsional via parameter atau process.env.FONNTE_GROUP_ID)
+  const rawGroup = (
+    options?.groupId !== undefined
+      ? options.groupId
+      : process.env.FONNTE_GROUP_ID
+  )
+    ?.trim()
+    .replace(/^["']|["']$/g, "");
+
+
+  const targetList: string[] = [];
+  if (rawPhone) {
+    targetList.push(rawPhone);
+  }
+  if (rawGroup && rawGroup !== "false" && rawGroup !== "none") {
+    targetList.push(rawGroup);
+  }
+
+  // Jika kredensial belum disetel di environment variables atau target kosong
+  if (!token || targetList.length === 0) {
     return {
       sent: false,
       reason: "unconfigured",
     };
   }
 
+  const combinedTarget = normalizeWhatsAppTarget(targetList.join(","));
   const message = buildNewTasksMessage(newTasks);
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    // Normalisasi nomor telepon ke format internasional (misal: 08123... -> 628123...)
-    let formattedPhone = targetPhone.replace(/\D/g, "");
-    if (formattedPhone.startsWith("0")) {
-      formattedPhone = "62" + formattedPhone.slice(1);
-    }
-
     const formData = new FormData();
-    formData.append("target", formattedPhone);
+    formData.append("target", combinedTarget);
     formData.append("message", message);
     formData.append("countryCode", "62");
     // Simulasi pengetikan alami di WhatsApp untuk menghindari deteksi spam/bot
     formData.append("typing", "true");
-    // Durasi mengetik 5 detik agar terlihat wajar dan natural
-    formData.append("duration", "5");
+    // Durasi mengetik 3 detik agar terlihat wajar dan natural
+    formData.append("duration", "3");
+
+    // Jika mengirim ke beberapa target (misal personal & grup), tambahkan jeda delay 2 detik antar target
+    if (combinedTarget.includes(",")) {
+      formData.append("delay", "2");
+    }
 
     const res = await fetch("https://api.fonnte.com/send", {
       method: "POST",
@@ -137,7 +182,7 @@ export async function sendWhatsAppNewTasksNotification(
     }
 
     console.info(
-      `[Fonnte WhatsApp]: Berhasil mengirim notifikasi ${newTasks.length} tugas baru ke ${targetPhone}`,
+      `[Fonnte WhatsApp]: Berhasil mengirim notifikasi ${newTasks.length} tugas baru ke ${combinedTarget}`,
     );
     return {
       sent: true,

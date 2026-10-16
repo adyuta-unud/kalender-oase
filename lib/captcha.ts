@@ -14,13 +14,18 @@ export interface TurnstileVerifyResult {
   challengeTs?: string;
 }
 
+let ephemeralCaptchaSecretKey: string | null = null;
+
 function getCaptchaSecretKey(): string {
-  return (
-    process.env.TURNSTILE_SECRET_KEY ||
-    process.env.SESSION_SECRET ||
-    'kalender-oase-cf-secret-fallback'
-  );
+  if (process.env.TURNSTILE_SECRET_KEY) return process.env.TURNSTILE_SECRET_KEY;
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+
+  if (!ephemeralCaptchaSecretKey) {
+    ephemeralCaptchaSecretKey = crypto.randomBytes(32).toString('hex');
+  }
+  return ephemeralCaptchaSecretKey;
 }
+
 
 /**
  * Buat nilai signed cookie untuk menandai bahwa IP/klien telah lolos verifikasi Turnstile

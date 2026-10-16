@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   formatDateWita,
   buildNewTasksMessage,
+  normalizeWhatsAppTarget,
   sendWhatsAppNewTasksNotification,
 } from "../lib/whatsapp.ts";
 import type { OaseEvent } from "../types/calendar.ts";
@@ -89,3 +90,123 @@ test("WhatsApp: sendWhatsAppNewTasksNotification skips cleanly when no tasks or 
   assert.equal(resUnconfigured.sent, false);
   assert.equal(resUnconfigured.reason, "unconfigured");
 });
+
+test("WhatsApp: normalizeWhatsAppTarget correctly handles phone numbers and group IDs", () => {
+  // Nomor HP biasa
+  assert.equal(normalizeWhatsAppTarget("081234567890"), "6281234567890");
+  assert.equal(normalizeWhatsAppTarget("6281234567890"), "6281234567890");
+  assert.equal(normalizeWhatsAppTarget("+62 812-3456-7890"), "6281234567890");
+
+  // Group ID WhatsApp (harus mempertahankan @g.us tanpa terpotong regex \D)
+  const groupId = "120363429059412433@g.us";
+  assert.equal(normalizeWhatsAppTarget(groupId), groupId);
+
+  // Kombinasi HP + Grup
+  const combined = normalizeWhatsAppTarget("081234567890, 120363429059412433@g.us");
+  assert.equal(combined, "6281234567890,120363429059412433@g.us");
+});
+
+test("WhatsApp: sendWhatsAppNewTasksNotification sends to both personal phone and group with delay", async () => {
+  const originalFetch = globalThis.fetch;
+  let interceptedUrl = "";
+  let interceptedHeaders: Record<string, string> = {};
+  let interceptedFormData: FormData | null = null;
+
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    interceptedUrl = String(input);
+    interceptedHeaders = (init?.headers as Record<string, string>) || {};
+    interceptedFormData = (init?.body as FormData) || null;
+
+    return new Response(
+      JSON.stringify({
+        status: true,
+        target: ["6281234567890", "120363429059412433@g.us"],
+        message: "success",
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  };
+
+  try {
+    const sampleTask: OaseEvent = {
+      uid: "task-group-1",
+      summary: "Tugas Pengujian Grup",
+      cleanTitle: "Tugas Pengujian Grup",
+      description: "Deskripsi",
+      cleanDescription: "Deskripsi",
+      start: new Date("2026-10-25T10:00:00Z"),
+      end: new Date("2026-10-25T10:00:00Z"),
+      eventType: "assignment",
+      courseName: "Sistem Terdistribusi",
+      isDeadline: true,
+      links: [],
+    };
+
+    const res = await sendWhatsAppNewTasksNotification([sampleTask], {
+      token: "test-token-123",
+      targetPhone: "081234567890",
+      groupId: "120363429059412433@g.us",
+    });
+
+    assert.equal(res.sent, true);
+    assert.equal(interceptedUrl, "https://api.fonnte.com/send");
+    assert.equal(interceptedHeaders.Authorization, "test-token-123");
+    assert.ok(interceptedFormData, "FormData harus dikirim");
+    const sentFormData = interceptedFormData as FormData;
+    assert.equal(
+      sentFormData.get("target"),
+      "6281234567890,120363429059412433@g.us",
+      "Target harus memuat nomor pribadi dan ID grup"
+    );
+    assert.equal(sentFormData.get("typing"), "true");
+    assert.equal(sentFormData.get("duration"), "3");
+    assert.equal(sentFormData.get("delay"), "2", "Harus ada delay 2s untuk multiple target");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("WhatsApp: sendWhatsAppNewTasksNotification sends only to personal phone when groupId is absent", async () => {
+  const originalFetch = globalThis.fetch;
+  let interceptedFormData: FormData | null = null;
+
+  globalThis.fetch = async (_input: RequestInfo | URL, init?: RequestInit) => {
+    interceptedFormData = (init?.body as FormData) || null;
+    return new Response(JSON.stringify({ status: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    const sampleTask: OaseEvent = {
+      uid: "task-single-1",
+      summary: "Tugas Single",
+      cleanTitle: "Tugas Single",
+      description: "",
+      cleanDescription: "",
+      start: new Date(),
+      end: new Date(),
+      eventType: "assignment",
+      courseName: "Basis Data",
+      isDeadline: true,
+      links: [],
+    };
+
+    const res = await sendWhatsAppNewTasksNotification([sampleTask], {
+      token: "test-token-123",
+      targetPhone: "081234567890",
+    });
+
+    assert.equal(res.sent, true);
+    assert.ok(interceptedFormData);
+    const sentFormData = interceptedFormData as FormData;
+    assert.equal(sentFormData.get("target"), "6281234567890");
+    // Tidak ada parameter delay jika target hanya 1 nomor
+    assert.equal(sentFormData.get("delay"), null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+

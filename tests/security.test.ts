@@ -176,5 +176,8 @@ test('Security Headers: next.config.ts configures defense-in-depth HTTP headers'
   assert.equal(headerMap.get('x-content-type-options'), 'nosniff');
   assert.equal(headerMap.get('referrer-policy'), 'strict-origin-when-cross-origin');
   assert.ok(headerMap.has('permissions-policy'));
+  assert.ok(headerMap.has('strict-transport-security'), 'HSTS header should be present');
+  assert.ok(headerMap.has('content-security-policy'), 'CSP header should be present');
 });
+
 
