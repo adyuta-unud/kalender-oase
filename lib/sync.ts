@@ -97,16 +97,20 @@ export async function syncOaseToGoogleCalendar(
 
   // 2. Ambil daftar tugas yang belum dikerjakan dari Moodle AJAX API
   let rawTasks = options.pendingTasks;
-  if (!rawTasks && options.oaseCredentials?.username && options.oaseCredentials?.password) {
+  if (
+    !rawTasks &&
+    options.oaseCredentials?.username &&
+    options.oaseCredentials?.password
+  ) {
     rawTasks = await fetchPendingOaseTasks(
       options.oaseCredentials.username,
-      options.oaseCredentials.password
+      options.oaseCredentials.password,
     );
   }
 
   if (!rawTasks) {
     throw new Error(
-      "Tidak ada data tugas OASE untuk disinkronkan. Silakan muat daftar tugas menggunakan username dan password SSO Unud Anda terlebih dahulu."
+      "Tidak ada data tugas OASE untuk disinkronkan. Silakan muat daftar tugas menggunakan username dan password SSO Unud Anda terlebih dahulu.",
     );
   }
 
@@ -187,8 +191,12 @@ export async function syncOaseToGoogleCalendar(
       } else {
         // Event sudah ada: Cek apakah ada perubahan
         // Jika sebelumnya sempat ditandai selesai tapi kembali muncul di pending list, reset status selesainya
-        const wasCompleted = existingGoogleEvent.summary?.startsWith("✅ [Selesai]");
-        if (wasCompleted || isEventChanged(existingGoogleEvent, event, formattedDescription)) {
+        const wasCompleted =
+          existingGoogleEvent.summary?.startsWith("✅ [Selesai]");
+        if (
+          wasCompleted ||
+          isEventChanged(existingGoogleEvent, event, formattedDescription)
+        ) {
           await calendar.events.patch({
             calendarId: targetCalendarId,
             eventId: existingGoogleEvent.id,
@@ -216,53 +224,59 @@ export async function syncOaseToGoogleCalendar(
   // 5. Tandai tugas-tugas di Google Calendar yang sudah tidak ada di daftar pending tugas sebagai SELESAI
   const yesterdayTime = Date.now() - 24 * 60 * 60 * 1000;
 
-    for (const item of existingItems) {
-      const oaseId = item.extendedProperties?.private?.oase_event_id;
-      if (!oaseId || !item.id) continue;
+  for (const item of existingItems) {
+    const oaseId = item.extendedProperties?.private?.oase_event_id;
+    if (!oaseId || !item.id) continue;
 
-      // Jika ID tidak ada di daftar pending tugas
-      if (!pendingUidSet.has(oaseId)) {
-        const itemStartTime = item.start?.dateTime ? new Date(item.start.dateTime).getTime() : 0;
-        // Hanya tandai jika tugas belum kadaluarsa jauh (misal dalam 30 hari terakhir atau masa depan)
-        const isRecentOrFuture = itemStartTime >= yesterdayTime - 30 * 24 * 60 * 60 * 1000;
-        const currentSummary = item.summary || "";
-        const isAlreadyMarked = currentSummary.startsWith("✅ [Selesai]");
+    // Jika ID tidak ada di daftar pending tugas
+    if (!pendingUidSet.has(oaseId)) {
+      const itemStartTime = item.start?.dateTime
+        ? new Date(item.start.dateTime).getTime()
+        : 0;
+      // Hanya tandai jika tugas belum kadaluarsa jauh (misal dalam 30 hari terakhir atau masa depan)
+      const isRecentOrFuture =
+        itemStartTime >= yesterdayTime - 30 * 24 * 60 * 60 * 1000;
+      const currentSummary = item.summary || "";
+      const isAlreadyMarked = currentSummary.startsWith("✅ [Selesai]");
 
-        if (isRecentOrFuture && !isAlreadyMarked) {
-          try {
-            const cleanTitle = currentSummary.replace(/^✅\s*\[Selesai\]\s*/i, "").trim();
-            await calendar.events.patch({
-              calendarId: targetCalendarId,
-              eventId: item.id,
-              requestBody: {
-                summary: `✅ [Selesai] ${cleanTitle}`,
-                // Hapus pengingat/alarm karena tugas sudah dikerjakan
-                reminders: {
-                  useDefault: false,
-                  overrides: [],
-                },
-                extendedProperties: {
-                  private: {
-                    ...item.extendedProperties?.private,
-                    oase_completed: "true",
-                    oase_completed_at: new Date().toISOString(),
-                  },
+      if (isRecentOrFuture && !isAlreadyMarked) {
+        try {
+          const cleanTitle = currentSummary
+            .replace(/^✅\s*\[Selesai\]\s*/i, "")
+            .trim();
+          await calendar.events.patch({
+            calendarId: targetCalendarId,
+            eventId: item.id,
+            requestBody: {
+              summary: `✅ [Selesai] ${cleanTitle}`,
+              // Hapus pengingat/alarm karena tugas sudah dikerjakan
+              reminders: {
+                useDefault: false,
+                overrides: [],
+              },
+              extendedProperties: {
+                private: {
+                  ...item.extendedProperties?.private,
+                  oase_completed: "true",
+                  oase_completed_at: new Date().toISOString(),
                 },
               },
-            });
-            completed++;
-            await new Promise((resolve) => setTimeout(resolve, 60));
-          } catch (err: unknown) {
-            const errorMsg = err instanceof Error ? err.message : "Gagal menandai tugas selesai";
-            errors.push({
-              eventId: oaseId,
-              title: currentSummary,
-              message: errorMsg,
-            });
-          }
+            },
+          });
+          completed++;
+          await new Promise((resolve) => setTimeout(resolve, 60));
+        } catch (err: unknown) {
+          const errorMsg =
+            err instanceof Error ? err.message : "Gagal menandai tugas selesai";
+          errors.push({
+            eventId: oaseId,
+            title: currentSummary,
+            message: errorMsg,
+          });
         }
       }
     }
+  }
 
   return {
     totalEvents: oaseEvents.length,
@@ -308,10 +322,15 @@ export async function getUpcomingOaseEventsFromCalendar(options?: {
 
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-  // Cari kalender tujuan: utamakan dedicated "OASE UNUD - Akademik", jika tidak ada gunakan primary
-  let targetCalendarId = options?.calendarId || "primary";
+  // 1. Tentukan target kalender awal (utamakan opsi eksplisit, GOOGLE_CALENDAR_ID di env, atau dedicated)
+  const envCalendarId = process.env.GOOGLE_CALENDAR_ID?.trim();
+  let targetCalendarId =
+    options?.calendarId ||
+    (envCalendarId && envCalendarId !== "dedicated"
+      ? envCalendarId
+      : undefined);
 
-  if (!options?.calendarId) {
+  if (!targetCalendarId) {
     try {
       const calendarList = await calendar.calendarList.list({
         minAccessRole: "reader",
@@ -330,54 +349,78 @@ export async function getUpcomingOaseEventsFromCalendar(options?: {
     }
   }
 
-  const daysAhead = options?.daysAhead ?? 30;
+  if (!targetCalendarId) {
+    targetCalendarId = "primary";
+  }
+
+  // Mulai dari waktu saat ini agar tugas lampau tidak ikut termuat
   const now = new Date();
   const timeMin = now.toISOString();
-  const timeMax = new Date(
-    now.getTime() + daysAhead * 24 * 60 * 60 * 1000,
-  ).toISOString();
 
-  const eventsRes = await calendar.events.list({
-    calendarId: targetCalendarId,
-    timeMin,
-    timeMax,
-    singleEvents: true,
-    orderBy: "startTime",
-    maxResults: 50,
-  });
+  // Hanya terapkan timeMax jika daysAhead disetel secara spesifik; default: tanpa batas waktu (ambil semua tugas mendatang)
+  const timeMax = options?.daysAhead
+    ? new Date(
+        now.getTime() + options.daysAhead * 24 * 60 * 60 * 1000,
+      ).toISOString()
+    : undefined;
 
-  const rawItems = eventsRes.data.items || [];
+  async function fetchCalendarTasks(calId: string) {
+    try {
+      const eventsRes = await calendar.events.list({
+        calendarId: calId,
+        timeMin,
+        ...(timeMax ? { timeMax } : {}),
+        singleEvents: true,
+        orderBy: "startTime",
+        maxResults: 250,
+      });
 
-  const tasks: UpcomingOaseTask[] = rawItems
-    .filter((item) => {
-      // Abaikan jika sudah ditandai selesai
-      if (item.summary?.startsWith("✅ [Selesai]")) return false;
-      if (item.extendedProperties?.private?.oase_completed === "true")
-        return false;
-      return Boolean(item.summary);
-    })
-    .map((item) => {
-      const course =
-        item.extendedProperties?.private?.oase_course ||
-        item.description?.match(/Mata Kuliah:\s*([^\n\r]+)/i)?.[1]?.trim() ||
-        undefined;
+      const rawItems = eventsRes.data.items || [];
+      return rawItems
+        .filter((item) => {
+          if (item.summary?.startsWith("✅ [Selesai]")) return false;
+          if (item.extendedProperties?.private?.oase_completed === "true")
+            return false;
+          return Boolean(item.summary);
+        })
+        .map((item) => {
+          const course =
+            item.extendedProperties?.private?.oase_course ||
+            item.description
+              ?.match(/Mata Kuliah:\s*([^\n\r]+)/i)?.[1]
+              ?.trim() ||
+            undefined;
 
-      const dateStr =
-        item.start?.dateTime ||
-        item.start?.date ||
-        item.end?.dateTime ||
-        item.end?.date;
-      const deadline = dateStr ? new Date(dateStr) : undefined;
+          const dateStr =
+            item.start?.dateTime ||
+            item.start?.date ||
+            item.end?.dateTime ||
+            item.end?.date;
+          const deadline = dateStr ? new Date(dateStr) : undefined;
 
-      return {
-        id: item.id || undefined,
-        summary: item.summary || "Tugas OASE",
-        courseName: course,
-        deadline,
-        description: item.description || undefined,
-        isCompleted: false,
-      };
-    });
+          return {
+            id: item.id || undefined,
+            summary: item.summary || "Tugas OASE",
+            courseName: course,
+            deadline,
+            description: item.description || undefined,
+            isCompleted: false,
+          };
+        });
+    } catch {
+      return [];
+    }
+  }
+
+  let tasks = await fetchCalendarTasks(targetCalendarId);
+
+  // Jika di kalender target (misal dedicated) tidak ada tugas aktif dan target bukan primary, coba cek kalender primary
+  if (tasks.length === 0 && targetCalendarId !== "primary") {
+    const primaryTasks = await fetchCalendarTasks("primary");
+    if (primaryTasks.length > 0) {
+      tasks = primaryTasks;
+    }
+  }
 
   return {
     calendarFound: true,
