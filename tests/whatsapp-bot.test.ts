@@ -7,6 +7,9 @@ import {
   determineBotReply,
   buildUpcomingTasksMessage,
   askGroqAi,
+  getGroqApiKeys,
+  getNextGroqApiKey,
+  resetGroqKeyIndex,
   sendFonnteReply,
   handleIncomingWhatsAppWebhook,
   validateWebhookSecret,
@@ -255,6 +258,7 @@ test("WhatsApp Bot: askGroqAi throws error when GROQ_API_KEY is missing", async 
   delete process.env.GROQ_API_KEY;
 
   try {
+    delete process.env.GROQ_API_KEYS;
     await assert.rejects(
       async () => {
         await askGroqAi("Halo AI");
@@ -263,6 +267,86 @@ test("WhatsApp Bot: askGroqAi throws error when GROQ_API_KEY is missing", async 
     );
   } finally {
     if (originalKey) process.env.GROQ_API_KEY = originalKey;
+  }
+});
+
+test("WhatsApp Bot: getGroqApiKeys parses single, multiple, and cleans whitespace", () => {
+  const originalKeys = process.env.GROQ_API_KEYS;
+  const originalKey = process.env.GROQ_API_KEY;
+
+  try {
+    delete process.env.GROQ_API_KEYS;
+    process.env.GROQ_API_KEY = " gsk_key1 , 'gsk_key2' , \"gsk_key3\" ";
+    const parsed = getGroqApiKeys();
+    assert.deepEqual(parsed, ["gsk_key1", "gsk_key2", "gsk_key3"]);
+
+    process.env.GROQ_API_KEYS = "gsk_customA, gsk_customB";
+    const parsedMulti = getGroqApiKeys();
+    assert.deepEqual(parsedMulti, ["gsk_customA", "gsk_customB"]);
+  } finally {
+    if (originalKeys) process.env.GROQ_API_KEYS = originalKeys;
+    else delete process.env.GROQ_API_KEYS;
+    if (originalKey) process.env.GROQ_API_KEY = originalKey;
+    else delete process.env.GROQ_API_KEY;
+  }
+});
+
+test("WhatsApp Bot: getNextGroqApiKey performs circular Round Robin rotation", () => {
+  const originalKeys = process.env.GROQ_API_KEYS;
+  try {
+    process.env.GROQ_API_KEYS = "key1,key2,key3";
+    resetGroqKeyIndex();
+
+    assert.equal(getNextGroqApiKey(), "key1");
+    assert.equal(getNextGroqApiKey(), "key2");
+    assert.equal(getNextGroqApiKey(), "key3");
+    // Rotasi kembali ke key pertama
+    assert.equal(getNextGroqApiKey(), "key1");
+    assert.equal(getNextGroqApiKey(), "key2");
+  } finally {
+    if (originalKeys) process.env.GROQ_API_KEYS = originalKeys;
+    else delete process.env.GROQ_API_KEYS;
+    resetGroqKeyIndex();
+  }
+});
+
+test("WhatsApp Bot: askGroqAi rotates keys and retries next key on 429 rate limit", async () => {
+  const originalKeys = process.env.GROQ_API_KEYS;
+  const originalFetch = globalThis.fetch;
+  const usedKeys: string[] = [];
+
+  process.env.GROQ_API_KEYS = "key-rate-limited,key-healthy";
+  resetGroqKeyIndex();
+
+  globalThis.fetch = async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const authHeader = (init?.headers as Record<string, string>)?.Authorization || "";
+    const key = authHeader.replace("Bearer ", "");
+    usedKeys.push(key);
+
+    if (key === "key-rate-limited") {
+      return new Response(JSON.stringify({ error: { message: "Rate limit reached (429)" } }), {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(
+      JSON.stringify({
+        choices: [{ message: { content: "Respon sukses dari key-healthy." } }],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  };
+
+  try {
+    const reply = await askGroqAi("Halo AI");
+    assert.equal(reply, "Respon sukses dari key-healthy.");
+    assert.deepEqual(usedKeys, ["key-rate-limited", "key-healthy"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKeys) process.env.GROQ_API_KEYS = originalKeys;
+    else delete process.env.GROQ_API_KEYS;
+    resetGroqKeyIndex();
   }
 });
 

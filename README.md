@@ -186,8 +186,13 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 ### D. Groq Cloud AI Assistant
 
 1. Dapatkan API key gratis di [Groq Console](https://console.groq.com/keys).
-2. Masukkan ke variabel `GROQ_API_KEY` di `.env.local`.
-3. Model default yang digunakan adalah `qwen/qwen3.8-27b` (bisa diubah ke `llama-3.3-70b-versatile`).
+2. Masukkan ke variabel `GROQ_API_KEY` atau `GROQ_API_KEYS` di `.env.local`.
+3. **Fitur Round Robin & Pencegahan Limit (429):** Anda dapat memasukkan beberapa API Key sekaligus (dipisahkan tanda koma), misalnya:
+   ```env
+   GROQ_API_KEYS="gsk_key1,gsk_key2,gsk_key3"
+   ```
+   Bot akan otomatis merotasi penggunaan key secara sirkular (*round-robin*), dan secara cerdas berpindah ke key berikutnya jika salah satu key terkena *rate limit* (HTTP 429).
+4. Model default yang digunakan adalah `qwen/qwen3.8-27b` (bisa disesuaikan via `GROQ_MODEL`, misal `llama-3.3-70b-versatile`).
 
 ---
 
