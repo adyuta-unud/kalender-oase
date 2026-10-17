@@ -50,14 +50,14 @@ test("WhatsApp: buildNewTasksMessage builds correct markdown layout", () => {
 
   const message = buildNewTasksMessage(sampleTasks);
 
-  assert.ok(message.includes("Tugas Baru OASE UNUD"), "Harus memiliki judul ringkas");
+  assert.ok(message.includes("Tugas Baru OASE UNUD (Kelas A Informatika 2024)"), "Harus memiliki judul ringkas dengan info kelas");
   assert.ok(message.includes("Tugas 1: Machine Learning"), "Harus memuat nama tugas 1");
   assert.ok(message.includes("Kecerdasan Buatan"), "Harus memuat mata kuliah 1");
   assert.ok(message.includes("Kuis 2: ERD Database"), "Harus memuat nama tugas 2");
   assert.ok(message.includes("Sistem Basis Data"), "Harus memuat mata kuliah 2");
   assert.ok(
-    !message.includes("http://") && !message.includes("https://"),
-    "Pesan tidak boleh mengandung URL/link agar terhindar dari spam filter WhatsApp"
+    message.includes("https://oasee.vercel.app"),
+    "Pesan harus memuat tautan web resmi oasee di bagian footer"
   );
 });
 

@@ -83,12 +83,15 @@ export function buildUpcomingTasksMessage(
   contactName?: string,
 ): string {
   const nameGreeting = contactName ? ` kak ${contactName}` : "";
+  const footerNote = `_Jika jadwal tidak sesuai dengan kelas/prodi/jurusan Anda, jadwal bisa dicek dan disinkronkan ke Google Calendar melalui web ini: https://oasee.vercel.app_`;
 
   if (!tasks || tasks.length === 0) {
     return [
-      `🎉 *Tidak ada tugas atau deadline OASE aktif dalam waktu dekat!*`,
+      `🎉 *Tidak ada tugas atau deadline OASE aktif dalam waktu dekat (Kelas A Informatika 2024)!*`,
       ``,
       `Semua tugas sudah selesai atau belum ada jadwal baru di Google Calendar. Selamat beristirahat${nameGreeting}! 😊`,
+      ``,
+      footerNote,
     ].join("\n");
   }
 
@@ -101,11 +104,13 @@ export function buildUpcomingTasksMessage(
   });
 
   return [
-    `📚 *Daftar Tugas & Deadline OASE Mendatang*`,
+    `📚 *Daftar Tugas & Deadline OASE Mendatang (Kelas A Informatika 2024)*`,
     ``,
     items.join("\n\n"),
     ``,
     `Tetap semangat dan jangan sampai terlewat ya${nameGreeting}! 💪`,
+    ``,
+    footerNote,
   ].join("\n");
 }
 

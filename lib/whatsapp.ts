@@ -27,6 +27,7 @@ export function formatDateWita(date: Date): string {
  */
 export function buildNewTasksMessage(tasks: OaseEvent[]): string {
   const taskCount = tasks.length;
+  const footerNote = `_Jika jadwal tidak sesuai dengan kelas/prodi/jurusan Anda, jadwal bisa dicek dan disinkronkan ke Google Calendar melalui web ini: https://oasee.vercel.app_`;
 
   const taskList = tasks
     .map((task, index) => {
@@ -43,13 +44,15 @@ export function buildNewTasksMessage(tasks: OaseEvent[]): string {
     .join("\n\n");
 
   return [
-    `*Tugas Baru OASE UNUD*`,
+    `*Tugas Baru OASE UNUD (Kelas A Informatika 2024)*`,
     ``,
     `Tersinkron ke Google Calendar:`,
     ``,
     taskList,
     ``,
     `_Pembaruan: ${formatDateWita(new Date())}_`,
+    ``,
+    footerNote,
   ].join("\n");
 }
 
@@ -57,7 +60,10 @@ export function buildNewTasksMessage(tasks: OaseEvent[]): string {
  * Normalisasi daftar target WhatsApp (mendukung nomor HP Indonesia & ID Grup WhatsApp)
  */
 export function normalizeWhatsAppTarget(input: string): string {
-  const parts = input.split(",").map((p) => p.trim()).filter(Boolean);
+  const parts = input
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
   const normalizedParts = parts.map((part) => {
     // Jika merupakan Group ID atau memuat @ (misal: 120363429059412433@g.us)
     if (part.includes("@")) {
@@ -118,7 +124,6 @@ export async function sendWhatsAppNewTasksNotification(
   )
     ?.trim()
     .replace(/^["']|["']$/g, "");
-
 
   const targetList: string[] = [];
   if (rawPhone) {

@@ -106,14 +106,18 @@ test("WhatsApp Bot: buildUpcomingTasksMessage formats task lists and empty state
   ];
   const msgFilled = buildUpcomingTasksMessage(sampleTasks, "Oka");
   assert.ok(msgFilled.includes("Daftar Tugas & Deadline OASE Mendatang"));
+  assert.ok(msgFilled.includes("Kelas A Informatika 2024"));
   assert.ok(msgFilled.includes("Tugas 1: Analisis Sistem"));
   assert.ok(msgFilled.includes("Rekayasa Perangkat Lunak"));
   assert.ok(msgFilled.includes("kak Oka"));
+  assert.ok(msgFilled.includes("https://oasee.vercel.app"));
 
   // 2. Kasus daftar tugas kosong
   const msgEmpty = buildUpcomingTasksMessage([], "Oka");
   assert.ok(msgEmpty.includes("Tidak ada tugas atau deadline OASE aktif"));
+  assert.ok(msgEmpty.includes("Kelas A Informatika 2024"));
   assert.ok(msgEmpty.includes("kak Oka"));
+  assert.ok(msgEmpty.includes("https://oasee.vercel.app"));
 });
 
 test("WhatsApp Bot: determineBotReply handles Route 1 Greeting with helpful menu", async () => {
