@@ -45,7 +45,10 @@ test("WhatsApp Bot: GREETING_PATTERN matches standard and extended greeting word
     assert.ok(GREETING_PATTERN.test(word), `Harus mencocokkan: ${word}`);
   }
 
-  assert.ok(!GREETING_PATTERN.test("halo apa kabar hari ini"), "Pola regex sapaan harus exact");
+  assert.ok(
+    !GREETING_PATTERN.test("halo apa kabar hari ini"),
+    "Pola regex sapaan harus exact",
+  );
   assert.ok(!GREETING_PATTERN.test("kapan deadline tugas?"));
 });
 
@@ -99,9 +102,15 @@ test("WhatsApp Bot: OASE_SCHEDULE_PATTERN matches schedule and task check keywor
       "Kok bisa ya ada dosen yg tiba-tiba posting 4 tugas sekaligus, knp gk jauh² hari?",
     ),
   );
-  assert.ok(!OASE_SCHEDULE_PATTERN.test("tolong bantu kerjakan tugas kalkulus saya"));
+  assert.ok(
+    !OASE_SCHEDULE_PATTERN.test("tolong bantu kerjakan tugas kalkulus saya"),
+  );
   assert.ok(!OASE_SCHEDULE_PATTERN.test("kenapa tugas kuliah banyak banget?"));
-  assert.ok(!OASE_SCHEDULE_PATTERN.test("bagaimana cara membagi waktu untuk mengerjakan tugas?"));
+  assert.ok(
+    !OASE_SCHEDULE_PATTERN.test(
+      "bagaimana cara membagi waktu untuk mengerjakan tugas?",
+    ),
+  );
 });
 
 test("WhatsApp Bot: buildUpcomingTasksMessage formats task lists and empty states cleanly", () => {
@@ -182,12 +191,18 @@ test("WhatsApp Bot: determineBotReply handles Route 3 OASE tasks from Google Cal
       message: "cek tugas",
       name: "Oka",
     },
-    { getUpcomingTasksFn: mockGetTasks }
+    { getUpcomingTasksFn: mockGetTasks },
   );
 
   assert.equal(decisionWithTasks.type, "tasks");
-  assert.ok(decisionWithTasks.replyText?.includes("Daftar Tugas & Deadline OASE Mendatang"));
-  assert.ok(decisionWithTasks.replyText?.includes("Tugas 4: Integrasi Webhook"));
+  assert.ok(
+    decisionWithTasks.replyText?.includes(
+      "Daftar Tugas & Deadline OASE Mendatang",
+    ),
+  );
+  assert.ok(
+    decisionWithTasks.replyText?.includes("Tugas 4: Integrasi Webhook"),
+  );
   assert.ok(decisionWithTasks.replyText?.includes("Pemrograman Web"));
 
   // 2. Kasus tidak ada tugas / tugas sudah selesai
@@ -202,11 +217,15 @@ test("WhatsApp Bot: determineBotReply handles Route 3 OASE tasks from Google Cal
       message: "apakah ada deadline?",
       name: "Oka",
     },
-    { getUpcomingTasksFn: mockGetEmptyTasks }
+    { getUpcomingTasksFn: mockGetEmptyTasks },
   );
 
   assert.equal(decisionEmpty.type, "tasks");
-  assert.ok(decisionEmpty.replyText?.includes("Tidak ada tugas atau deadline OASE aktif"));
+  assert.ok(
+    decisionEmpty.replyText?.includes(
+      "Tidak ada tugas atau deadline OASE aktif",
+    ),
+  );
 
   // 3. Kasus error Google Calendar (misal token belum diset)
   const mockGetErrorTasks = async () => {
@@ -219,12 +238,16 @@ test("WhatsApp Bot: determineBotReply handles Route 3 OASE tasks from Google Cal
       message: "jadwal oase",
       name: "Oka",
     },
-    { getUpcomingTasksFn: mockGetErrorTasks }
+    { getUpcomingTasksFn: mockGetErrorTasks },
   );
 
   assert.equal(decisionError.type, "tasks");
-  assert.ok(decisionError.replyText?.includes("Tidak dapat memuat jadwal tugas"));
-  assert.ok(decisionError.replyText?.includes("GOOGLE_REFRESH_TOKEN belum disetel"));
+  assert.ok(
+    decisionError.replyText?.includes("Tidak dapat memuat jadwal tugas"),
+  );
+  assert.ok(
+    decisionError.replyText?.includes("GOOGLE_REFRESH_TOKEN belum disetel"),
+  );
 });
 
 test("WhatsApp Bot: determineBotReply handles Route 4 Fallback to AI", async () => {
@@ -240,11 +263,14 @@ test("WhatsApp Bot: determineBotReply handles Route 4 Fallback to AI", async () 
       message: "Di mana lokasi kampus Universitas Udayana?",
       name: "Budi",
     },
-    { askAiFn: mockAskAi }
+    { askAiFn: mockAskAi },
   );
 
   assert.equal(decision.type, "ai");
-  assert.equal(decision.replyText, "Universitas Udayana berlokasi di Bali, Indonesia.");
+  assert.equal(
+    decision.replyText,
+    "Universitas Udayana berlokasi di Bali, Indonesia.",
+  );
   assert.equal(decision.duration, 5);
   assert.equal(askedPrompt, "Di mana lokasi kampus Universitas Udayana?");
 });
@@ -276,7 +302,7 @@ test("WhatsApp Bot: askGroqAi throws error when GROQ_API_KEY is missing", async 
       async () => {
         await askGroqAi("Halo AI");
       },
-      (err: Error) => err.message.includes("GROQ_API_KEY belum dikonfigurasi")
+      (err: Error) => err.message.includes("GROQ_API_KEY belum dikonfigurasi"),
     );
   } finally {
     if (originalKey) process.env.GROQ_API_KEY = originalKey;
@@ -332,22 +358,26 @@ test("WhatsApp Bot: askGroqAi rotates keys and retries next key on 429 rate limi
   resetGroqKeyIndex();
 
   globalThis.fetch = async (_input: RequestInfo | URL, init?: RequestInit) => {
-    const authHeader = (init?.headers as Record<string, string>)?.Authorization || "";
+    const authHeader =
+      (init?.headers as Record<string, string>)?.Authorization || "";
     const key = authHeader.replace("Bearer ", "");
     usedKeys.push(key);
 
     if (key === "key-rate-limited") {
-      return new Response(JSON.stringify({ error: { message: "Rate limit reached (429)" } }), {
-        status: 429,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: { message: "Rate limit reached (429)" } }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
 
     return new Response(
       JSON.stringify({
         choices: [{ message: { content: "Respon sukses dari key-healthy." } }],
       }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json" } },
     );
   };
 
@@ -392,6 +422,8 @@ test("WhatsApp Bot: sendFonnteReply submits valid multipart payload to Fonnte", 
     assert.equal(fd.get("message"), "Pesan uji coba");
     assert.equal(fd.get("typing"), "true");
     assert.equal(fd.get("duration"), "5");
+    assert.equal(fd.get("connectOnly"), "false");
+    assert.equal(fd.get("preview"), "false");
     assert.equal(fd.get("inboxid"), "235729608");
   } finally {
     globalThis.fetch = originalFetch;
@@ -401,12 +433,14 @@ test("WhatsApp Bot: sendFonnteReply submits valid multipart payload to Fonnte", 
 test("WhatsApp Bot: handleIncomingWhatsAppWebhook handles complete execution flow", async () => {
   let sentTarget = "";
   let sentMessage = "";
-  let capturedOpts: { duration?: number; inboxid?: number | string } | undefined;
+  let capturedOpts:
+    | { duration?: number; inboxid?: number | string }
+    | undefined;
 
   const mockSendReply = async (
     target: string,
     msg: string,
-    opts?: { duration?: number; inboxid?: number | string }
+    opts?: { duration?: number; inboxid?: number | string },
   ) => {
     sentTarget = target;
     sentMessage = msg;
@@ -421,7 +455,7 @@ test("WhatsApp Bot: handleIncomingWhatsAppWebhook handles complete execution flo
       name: "Andi",
       inboxid: 998877,
     },
-    { sendReplyFn: mockSendReply as typeof sendFonnteReply }
+    { sendReplyFn: mockSendReply as typeof sendFonnteReply },
   );
 
   assert.equal(result.processed, true);
@@ -429,7 +463,11 @@ test("WhatsApp Bot: handleIncomingWhatsAppWebhook handles complete execution flo
   assert.equal(sentTarget, "6281234567890");
   assert.ok(sentMessage.includes("Halo kak Andi!"));
   assert.ok(sentMessage.includes("cek tugas"));
-  assert.equal(capturedOpts?.inboxid, 998877, "inboxid pada chat personal harus diteruskan untuk quoted reply");
+  assert.equal(
+    capturedOpts?.inboxid,
+    998877,
+    "inboxid pada chat personal harus diteruskan untuk quoted reply",
+  );
 });
 
 test("WhatsApp Bot: askGroqAi parses valid Groq OpenAI response", async () => {
@@ -439,7 +477,7 @@ test("WhatsApp Bot: askGroqAi parses valid Groq OpenAI response", async () => {
       JSON.stringify({
         choices: [{ message: { content: "Halo, saya asisten AI Anda." } }],
       }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json" } },
     );
   };
 
@@ -481,47 +519,64 @@ test("WhatsApp Group Mention: isBotMentionedInGroup detects mentions properly", 
 
   // 1. Mention dengan WhatsApp LID bot @127020117803175 -> HARUS TRUE
   assert.equal(
-    isBotMentionedInGroup("@127020117803175 apa nama model AI anda?", identifiers),
-    true
+    isBotMentionedInGroup(
+      "@127020117803175 apa nama model AI anda?",
+      identifiers,
+    ),
+    true,
   );
 
   // 2. Mention LID orang lain (misal Oka @235983186452529) -> HARUS FALSE (tidak membalas)
   assert.equal(
     isBotMentionedInGroup("@235983186452529 halo Oka", identifiers),
-    false
+    false,
   );
 
   // 3. Mention nomor bot (@6285187976800 atau @085187976800) -> HARUS TRUE
   assert.equal(isBotMentionedInGroup("@6285187976800 halo", identifiers), true);
-  assert.equal(isBotMentionedInGroup("@085187976800 apa kabar?", identifiers), true);
+  assert.equal(
+    isBotMentionedInGroup("@085187976800 apa kabar?", identifiers),
+    true,
+  );
 
   // 4. Mention tag @bot -> HARUS TRUE
-  assert.equal(isBotMentionedInGroup("@bot tolong infokan jadwal", identifiers), true);
+  assert.equal(
+    isBotMentionedInGroup("@bot tolong infokan jadwal", identifiers),
+    true,
+  );
 
   // 5. Mention nomor orang lain (@628111111111) -> HARUS FALSE
   assert.equal(isBotMentionedInGroup("@628111111111 halo", identifiers), false);
 
   // 6. Pesan biasa tanpa mention -> HARUS FALSE
-  assert.equal(isBotMentionedInGroup("halo semua teman-teman", identifiers), false);
+  assert.equal(
+    isBotMentionedInGroup("halo semua teman-teman", identifiers),
+    false,
+  );
 });
 
 test("WhatsApp Group Mention: removeBotMention cleans mention tags", () => {
   const identifiers = { botPhone: "6285187976800", botLid: "127020117803175" };
   assert.equal(
     removeBotMention("@127020117803175 apa nama model AI anda?", identifiers),
-    "apa nama model AI anda?"
+    "apa nama model AI anda?",
   );
-  assert.equal(removeBotMention("@6285187976800 Halo kak", identifiers), "Halo kak");
-  assert.equal(removeBotMention("@bot kapan deadline tugas?", identifiers), "kapan deadline tugas?");
+  assert.equal(
+    removeBotMention("@6285187976800 Halo kak", identifiers),
+    "Halo kak",
+  );
+  assert.equal(
+    removeBotMention("@bot kapan deadline tugas?", identifiers),
+    "kapan deadline tugas?",
+  );
   assert.equal(removeBotMention("@085187976800", identifiers), "");
 
   // Jangan menghapus mention orang lain
   assert.equal(
     removeBotMention("halo @235983186452529 apa kabar?", identifiers),
-    "halo @235983186452529 apa kabar?"
+    "halo @235983186452529 apa kabar?",
   );
 });
-
 
 test("WhatsApp Group Reply: responds only when bot is mentioned in group", async () => {
   const groupJid = "120363429059412433@g.us";
@@ -576,10 +631,12 @@ test("WhatsApp Group Reply: responds only when bot is mentioned in group", async
         calendarFound: true,
         tasks: mockTasks,
       }),
-    }
+    },
   );
   assert.equal(resGroupTask.type, "tasks");
-  assert.ok(resGroupTask.replyText?.includes("Tugas Besar Arsitektur Komputer"));
+  assert.ok(
+    resGroupTask.replyText?.includes("Tugas Besar Arsitektur Komputer"),
+  );
 
   // 4. Pesan grup DENGAN mention bot untuk AI (Route 4)
   let aiCalled = false;
@@ -598,7 +655,7 @@ test("WhatsApp Group Reply: responds only when bot is mentioned in group", async
       message: "@6285123456789 apa nama model AI anda?",
       name: "Rudi",
     },
-    { askAiFn: mockAi }
+    { askAiFn: mockAi },
   );
   assert.equal(resAi.type, "ai");
   assert.equal(aiCalled, true);
@@ -653,7 +710,9 @@ test("WhatsApp Group Real Webhook: handles user exact LID mention and non-mentio
     let cleanedAiPrompt = "";
     let targetSent = "";
     let messageSent = "";
-    let capturedOptions: { duration?: number; inboxid?: number | string } | undefined;
+    let capturedOptions:
+      | { duration?: number; inboxid?: number | string }
+      | undefined;
 
     const mockAi = async (msg: string) => {
       cleanedAiPrompt = msg;
@@ -663,7 +722,7 @@ test("WhatsApp Group Real Webhook: handles user exact LID mention and non-mentio
     const mockSendReply = async (
       target: string,
       msg: string,
-      opts?: { duration?: number; inboxid?: number | string }
+      opts?: { duration?: number; inboxid?: number | string },
     ) => {
       targetSent = target;
       messageSent = msg;
@@ -676,19 +735,27 @@ test("WhatsApp Group Real Webhook: handles user exact LID mention and non-mentio
       sendReplyFn: mockSendReply as typeof sendFonnteReply,
     });
 
-    assert.equal(resMentioned.processed, true, "Pesan grup dengan mention harus diproses");
+    assert.equal(
+      resMentioned.processed,
+      true,
+      "Pesan grup dengan mention harus diproses",
+    );
     assert.equal(resMentioned.decision.type, "ai");
     assert.equal(
       cleanedAiPrompt,
       "apa nama model AI anda?",
-      "Tag LID @127020117803175 harus dibersihkan dari prompt AI"
+      "Tag LID @127020117803175 harus dibersihkan dari prompt AI",
     );
-    assert.equal(targetSent, "120363410925013058@g.us", "Balasan harus dikirim ke grup target");
+    assert.equal(
+      targetSent,
+      "120363410925013058@g.us",
+      "Balasan harus dikirim ke grup target",
+    );
     assert.equal(messageSent, "Saya ditenagai oleh model AI Qwen.");
     assert.equal(
       capturedOptions?.inboxid,
       235729608,
-      "inboxid harus diteruskan agar bot mereply pesan spesifik (quoted reply)"
+      "inboxid harus diteruskan agar bot mereply pesan spesifik (quoted reply)",
     );
 
     // Contoh 2: Payload TIDAK DIMENTION dari webhook nyata Fonnte
@@ -720,17 +787,15 @@ test("WhatsApp Group Real Webhook: handles user exact LID mention and non-mentio
       username: "6285805945279",
     };
 
-    const resNotMentioned = await handleIncomingWhatsAppWebhook(noMentionPayload);
+    const resNotMentioned =
+      await handleIncomingWhatsAppWebhook(noMentionPayload);
     assert.equal(
       resNotMentioned.processed,
       false,
-      "Pesan grup tanpa mention harus diabaikan dan tidak dibalas"
+      "Pesan grup tanpa mention harus diabaikan dan tidak dibalas",
     );
     assert.equal(resNotMentioned.decision.type, "ignored");
   } finally {
     process.env.FONNTE_BOT_LID = originalBotLid;
   }
 });
-
-
-

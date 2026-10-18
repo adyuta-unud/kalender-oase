@@ -154,12 +154,14 @@ export async function sendWhatsAppNewTasksNotification(
     formData.append("countryCode", "62");
     // Simulasi pengetikan alami di WhatsApp untuk menghindari deteksi spam/bot
     formData.append("typing", "true");
-    // Durasi mengetik 3 detik agar terlihat wajar dan natural
-    formData.append("duration", "3");
+    // Durasi mengetik 5 detik agar terlihat wajar dan natural
+    formData.append("duration", "5");
+    formData.append("connectOnly", "false");
+    formData.append("preview", "false");
 
-    // Jika mengirim ke beberapa target (misal personal & grup), tambahkan jeda delay 2 detik antar target
+    // Jika mengirim ke beberapa target (misal personal & grup), tambahkan jeda delay 3 detik antar target
     if (combinedTarget.includes(",")) {
-      formData.append("delay", "2");
+      formData.append("delay", "3");
     }
 
     const res = await fetch("https://api.fonnte.com/send", {

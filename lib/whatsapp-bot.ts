@@ -584,7 +584,7 @@ export async function determineBotReply(
       return {
         type: "tasks",
         replyText,
-        duration: 3,
+        duration: 5,
       };
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -647,7 +647,7 @@ export async function sendFonnteReply(
   }
 
   const normalizedTarget = normalizeWhatsAppTarget(target);
-  const duration = options?.duration ?? 3;
+  const duration = options?.duration ?? 5;
 
   const formData = new FormData();
   formData.append("target", normalizedTarget);
@@ -655,6 +655,8 @@ export async function sendFonnteReply(
   formData.append("countryCode", "62");
   formData.append("typing", "true");
   formData.append("duration", String(duration));
+  formData.append("connectOnly", "false");
+  formData.append("preview", "false");
 
   const rawInboxId = options?.inboxid;
   const parsedInboxId =

@@ -31,7 +31,12 @@ test("WhatsApp: buildNewTasksMessage builds correct markdown layout", () => {
       eventType: "assignment",
       courseName: "Kecerdasan Buatan",
       isDeadline: true,
-      links: [{ label: "OASE", url: "https://oase.unud.ac.id/mod/assign/view.php?id=123" }],
+      links: [
+        {
+          label: "OASE",
+          url: "https://oase.unud.ac.id/mod/assign/view.php?id=123",
+        },
+      ],
     },
     {
       uid: "task-2",
@@ -50,14 +55,29 @@ test("WhatsApp: buildNewTasksMessage builds correct markdown layout", () => {
 
   const message = buildNewTasksMessage(sampleTasks);
 
-  assert.ok(message.includes("Tugas Baru OASE UNUD (Kelas A Informatika 2024)"), "Harus memiliki judul ringkas dengan info kelas");
-  assert.ok(message.includes("Tugas 1: Machine Learning"), "Harus memuat nama tugas 1");
-  assert.ok(message.includes("Kecerdasan Buatan"), "Harus memuat mata kuliah 1");
-  assert.ok(message.includes("Kuis 2: ERD Database"), "Harus memuat nama tugas 2");
-  assert.ok(message.includes("Sistem Basis Data"), "Harus memuat mata kuliah 2");
+  assert.ok(
+    message.includes("Tugas Baru OASE UNUD (Kelas A Informatika 2024)"),
+    "Harus memiliki judul ringkas dengan info kelas",
+  );
+  assert.ok(
+    message.includes("Tugas 1: Machine Learning"),
+    "Harus memuat nama tugas 1",
+  );
+  assert.ok(
+    message.includes("Kecerdasan Buatan"),
+    "Harus memuat mata kuliah 1",
+  );
+  assert.ok(
+    message.includes("Kuis 2: ERD Database"),
+    "Harus memuat nama tugas 2",
+  );
+  assert.ok(
+    message.includes("Sistem Basis Data"),
+    "Harus memuat mata kuliah 2",
+  );
   assert.ok(
     message.includes("https://oasee.vercel.app"),
-    "Pesan harus memuat tautan web resmi oasee di bagian footer"
+    "Pesan harus memuat tautan web resmi oasee di bagian footer",
   );
 });
 
@@ -102,7 +122,9 @@ test("WhatsApp: normalizeWhatsAppTarget correctly handles phone numbers and grou
   assert.equal(normalizeWhatsAppTarget(groupId), groupId);
 
   // Kombinasi HP + Grup
-  const combined = normalizeWhatsAppTarget("081234567890, 120363429059412433@g.us");
+  const combined = normalizeWhatsAppTarget(
+    "081234567890, 120363429059412433@g.us",
+  );
   assert.equal(combined, "6281234567890,120363429059412433@g.us");
 });
 
@@ -123,7 +145,7 @@ test("WhatsApp: sendWhatsAppNewTasksNotification sends to both personal phone an
         target: ["6281234567890", "120363429059412433@g.us"],
         message: "success",
       }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json" } },
     );
   };
 
@@ -156,11 +178,17 @@ test("WhatsApp: sendWhatsAppNewTasksNotification sends to both personal phone an
     assert.equal(
       sentFormData.get("target"),
       "6281234567890,120363429059412433@g.us",
-      "Target harus memuat nomor pribadi dan ID grup"
+      "Target harus memuat nomor pribadi dan ID grup",
     );
     assert.equal(sentFormData.get("typing"), "true");
-    assert.equal(sentFormData.get("duration"), "3");
-    assert.equal(sentFormData.get("delay"), "2", "Harus ada delay 2s untuk multiple target");
+    assert.equal(sentFormData.get("duration"), "5");
+    assert.equal(sentFormData.get("connectOnly"), "false");
+    assert.equal(sentFormData.get("preview"), "false");
+    assert.equal(
+      sentFormData.get("delay"),
+      "3",
+      "Harus ada delay 3s untuk multiple target",
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -208,5 +236,3 @@ test("WhatsApp: sendWhatsAppNewTasksNotification sends only to personal phone wh
     globalThis.fetch = originalFetch;
   }
 });
-
-
