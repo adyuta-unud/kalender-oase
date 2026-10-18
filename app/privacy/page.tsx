@@ -4,7 +4,7 @@ import { Logo } from "@/components/Logo";
 import { Lock, ArrowLeft, KeyRound, EyeOff, ExternalLink } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Kalender OASE",
+  title: "Privacy Policy",
   description:
     "Kebijakan Privasi untuk aplikasi Kalender OASE Universitas Udayana.",
   alternates: {

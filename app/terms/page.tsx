@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Kalender OASE",
+  title: "Terms of Service",
   description:
     "Syarat dan Ketentuan Layanan untuk aplikasi Kalender OASE Universitas Udayana.",
   alternates: {
