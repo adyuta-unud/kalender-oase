@@ -198,7 +198,7 @@ Buka [http://localhost:3000](http://localhost:3000) di browser.
 
 ## Otomatisasi Sinkronisasi
 
-### GitHub Actions
+### GitHub Actions (Sinkronisasi Vercel)
 
 Anda dapat mengaktifkan sinkronisasi otomatis menggunakan GitHub Actions gratis:
 
@@ -207,6 +207,13 @@ Anda dapat mengaktifkan sinkronisasi otomatis menggunakan GitHub Actions gratis:
    - `VERCEL_APP_URL`: URL aplikasi Anda di Vercel (contoh: `https://oasee.vercel.app`)
    - `CRON_SECRET`: Secret token yang sama dengan `CRON_SECRET` di Vercel
 3. Workflow di `.github/workflows/sync.yml` akan secara otomatis memicu sinkronisasi berkala ke server Vercel Anda.
+
+### Auto-Update Repo Fork (Sinkronisasi Otomatis dari Upstream)
+
+Bagi Anda yang melakukan **Fork** pada repositori ini:
+- Repositori telah dilengkapi workflow [`.github/workflows/sync-fork.yml`](.github/workflows/sync-fork.yml) yang otomatis berjalan setiap hari untuk menarik (*fetch & merge*) setiap pembaruan atau perbaikan *bug* terbaru dari repositori utama (`oka123/kalender-oase`).
+- **Trigger Manual:** Anda juga dapat menyinkronkan kapan saja secara instan melalui tab **Actions** > **Sync Fork from Upstream** > klik **Run workflow**.
+- **Izin Workflow:** Pastikan pengaturan repositori fork Anda di GitHub (**Settings** > **Actions** > **General** > **Workflow permissions**) telah disetel ke **Read and write permissions** agar GitHub Actions bot dapat melakukan push commit hasil sinkronisasi.
 
 ### Cron-Job.org (Opsional)
 

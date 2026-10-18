@@ -25,6 +25,26 @@ test('GitHub Actions: workflow file .github/workflows/sync.yml exists and has va
   assert.match(content, /Authorization:\s*Bearer/, 'Header Authorization Bearer wajib dikirimkan');
 });
 
+test('GitHub Actions: workflow file .github/workflows/sync-fork.yml exists and has valid configuration', () => {
+  const workflowPath = path.resolve(process.cwd(), '.github/workflows/sync-fork.yml');
+  assert.ok(fs.existsSync(workflowPath), 'File sync-fork.yml wajib ada di .github/workflows/');
+
+  const content = fs.readFileSync(workflowPath, 'utf-8');
+
+  // 1. Verifikasi trigger schedule (cron) dan manual (workflow_dispatch)
+  assert.match(content, /schedule:/, 'Workflow harus memiliki event trigger schedule');
+  assert.match(content, /workflow_dispatch:/, 'Workflow harus mendukung manual dispatch');
+
+  // 2. Verifikasi permission contents: write untuk push update ke fork
+  assert.match(content, /permissions:\s*[\r\n]+\s*contents:\s*write/, 'Workflow harus memiliki permission contents: write');
+
+  // 3. Verifikasi remote upstream repo utama
+  assert.match(content, /oka123\/kalender-oase/, 'Workflow harus mengarah ke upstream repo oka123/kalender-oase');
+
+  // 4. Verifikasi proteksi agar tidak berjalan di repo utama itu sendiri
+  assert.match(content, /github\.repository\s*!=\s*'oka123\/kalender-oase'/, 'Workflow harus diskip jika berada di repo utama');
+});
+
 test('GitHub Actions Webhook: rejects requests without valid Authorization header', async () => {
   // Simulasi penolakan authorization jika header tidak valid
   const testUrl = 'http://localhost:3000/api/cron/sync';

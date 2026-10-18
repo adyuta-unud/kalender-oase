@@ -93,6 +93,15 @@ test("WhatsApp Bot: OASE_SCHEDULE_PATTERN matches schedule and task check keywor
 
   assert.ok(!OASE_SCHEDULE_PATTERN.test("siapa nama penciptamu?"));
   assert.ok(!OASE_SCHEDULE_PATTERN.test("ceritakan lelucon"));
+  // Kasus percakapan / keluhan / diskusi materi yang menyebut kata "tugas" (harus diteruskan ke AI, bukan list tugas)
+  assert.ok(
+    !OASE_SCHEDULE_PATTERN.test(
+      "Kok bisa ya ada dosen yg tiba-tiba posting 4 tugas sekaligus, knp gk jauh² hari?",
+    ),
+  );
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("tolong bantu kerjakan tugas kalkulus saya"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("kenapa tugas kuliah banyak banget?"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("bagaimana cara membagi waktu untuk mengerjakan tugas?"));
 });
 
 test("WhatsApp Bot: buildUpcomingTasksMessage formats task lists and empty states cleanly", () => {

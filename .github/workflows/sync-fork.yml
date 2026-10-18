@@ -1,0 +1,74 @@
+name: Sync Fork from Upstream
+
+on:
+  schedule:
+    # Berjalan otomatis setiap hari pada pukul 00:00 UTC (08:00 WITA)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    # Memungkinkan trigger sinkronisasi manual kapan saja dari tombol "Run workflow" di GitHub Actions
+
+# Batalkan job lama jika ada job baru yang dipicu pada branch yang sama
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Berikan izin write ke repositori agar GitHub Actions bot dapat melakukan push update
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync Fork with Upstream
+    runs-on: ubuntu-latest
+    # Hanya dijalankan pada repositori fork (dilewati jika dijalankan di repositori utama oka123/kalender-oase)
+    if: github.repository != 'oka123/kalender-oase'
+
+    steps:
+      - name: Checkout repository fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync with Upstream (oka123/kalender-oase)
+        run: |
+          UPSTREAM_URL="https://github.com/oka123/kalender-oase.git"
+          DEFAULT_BRANCH="main"
+
+          echo "Mengonfigurasi identitas git bot..."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          echo "Menambahkan remote upstream ($UPSTREAM_URL)..."
+          git remote add upstream "$UPSTREAM_URL" || git remote set-url upstream "$UPSTREAM_URL"
+
+          echo "Mengambil branch $DEFAULT_BRANCH dari upstream..."
+          git fetch upstream "$DEFAULT_BRANCH"
+
+          echo "Beralih ke branch $DEFAULT_BRANCH..."
+          git checkout "$DEFAULT_BRANCH"
+
+          LOCAL_COMMIT=$(git rev-parse HEAD)
+          UPSTREAM_COMMIT=$(git rev-parse upstream/"$DEFAULT_BRANCH")
+
+          if [ "$LOCAL_COMMIT" = "$UPSTREAM_COMMIT" ]; then
+            echo "✅ Repositori fork sudah sinkron dan up-to-date dengan repo utama. Tidak ada perubahan baru."
+            exit 0
+          fi
+
+          echo "Ditemukan pembaruan dari repo utama ($LOCAL_COMMIT -> $UPSTREAM_COMMIT)."
+          echo "Mencoba melakukan fast-forward merge..."
+
+          if git merge --ff-only upstream/"$DEFAULT_BRANCH"; then
+            echo "✅ Fast-forward merge berhasil!"
+          else
+            echo "Fast-forward tidak dapat dilakukan secara langsung. Mencoba auto-merge commit..."
+            git merge upstream/"$DEFAULT_BRANCH" -m "chore(sync): sync fork with upstream oka123/kalender-oase" --no-edit || {
+              echo "::error::Terjadi konflik saat mencoba menggabungkan perubahan dari repo utama. Silakan selesaikan konflik secara manual."
+              exit 1
+            }
+          fi
+
+          echo "Mendorong perubahan ke remote origin/$DEFAULT_BRANCH..."
+          git push origin "$DEFAULT_BRANCH"
+          echo "🎉 Sinkronisasi fork berhasil diselesaikan!"
