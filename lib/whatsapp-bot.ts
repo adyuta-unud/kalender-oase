@@ -72,8 +72,30 @@ export const CLOSING_PATTERN =
   /^(cukup|sudah\s+cukup|terima\s*kasih|terimakasih|makasih|makasi|mksih|thanks|thank\s*you|thx|ty|ok+|oke+|si+p|sia+p|baik|mantap|mantul|bye|dadah)$/i;
 
 // Regex pola deteksi intent cek jadwal / tugas / deadline OASE
-export const OASE_SCHEDULE_PATTERN =
-  /(?:^|\b)(?:cek|lihat|info|daftar|ada\s+apa|ada|jadwal)?\s*(?:tugas|deadline|jadwal|kuis|ujian|asistensi|praktikum|agenda|pr)(?:\s+(?:oase|kuliah|akademik|minggu\s+ini|hari\s+ini|besok))?(?:\b|\?|$)/i;
+// Dirancang spesifik untuk intent cek/lihat jadwal agar tidak salah mendeteksi (false positive)
+// percakapan diskusi, curhat, atau pertanyaan ke AI yang sekadar menyebut kata "tugas" (misalnya: "Kok bisa dosen kasih 4 tugas...").
+export const OASE_SCHEDULE_PATTERN = new RegExp(
+  [
+    // 1. Aksi eksplisit (cek/lihat/info/daftar/list/rekap/spill) + topik tugas/jadwal
+    /(?:^|\b)(?:cek|check|lihat|liat|info|daftar|list|rekap|spill)\s+(?:semua\s+)?(?:tugas|deadline|jadwal|kuis|ujian|asistensi|praktikum|agenda|pr)\b/
+      .source,
+    // 2. Pertanyaan eksistensi tugas (misal: "ada tugas apa", "apakah ada tugas", "ada deadline gak", "apa ada pr")
+    /(?:^|\b)(?:ada|apakah\s+ada|apa\s+ada)\s+(?:tugas|deadline|jadwal|kuis|ujian|asistensi|praktikum|agenda|pr)\b/
+      .source,
+    // 3. Pertanyaan tugas spesifik waktu / kapan / apa saja (misal: "tugas apa aja", "kapan deadline tugas", "tugas hari ini")
+    /\b(?:tugas|deadline|jadwal|pr)\s+(?:apa(?:\s*(?:aja|saja))?|hari\s+ini|besok|minggu\s+ini)\b/
+      .source,
+    /\bkapan\s+deadline(?:\s+tugas)?\b/.source,
+    // 4. Frasa spesifik topik OASE atau jadwal perkuliahan
+    /\b(?:tugas|deadline|jadwal|kuis|ujian|asistensi|praktikum)\s+oase\b/
+      .source,
+    /\bjadwal\s+(?:kuliah|praktikum|asistensi|ujian)\b/.source,
+    // 5. Pesan singkat standalone (misal hanya mengetik: "tugas", "deadline", "jadwal", "pr", "kuis", "oase")
+    /^(?:tugas|deadline|jadwal|kuis|ujian|asistensi|praktikum|agenda|pr|oase)(?:\s+(?:oase|kuliah|akademik|minggu\s+ini|hari\s+ini|besok))?\s*\??$/
+      .source,
+  ].join("|"),
+  "i",
+);
 
 /**
  * Menyusun pesan WhatsApp daftar tugas / deadline OASE dari Google Calendar
