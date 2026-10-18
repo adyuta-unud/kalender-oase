@@ -87,9 +87,8 @@ export default function TermsOfServicePage() {
             <p className="text-sm text-slate-600 leading-relaxed">
               Kalender OASE adalah aplikasi utilitas non-komersial yang
               dirancang untuk memfasilitasi sinkronisasi jadwal akademik
-              (seperti deadline tugas, kuis, dan ujian) dari feed iCalendar
-              portal OASE Universitas Udayana ke akun Google Calendar pribadi
-              pengguna.
+              (seperti deadline tugas, kuis, dan ujian) dari portal OASE
+              Universitas Udayana ke akun Google Calendar pribadi pengguna.
             </p>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
               <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
@@ -97,10 +96,7 @@ export default function TermsOfServicePage() {
                 <span>Fitur Utama Layanan:</span>
               </div>
               <ul className="list-disc pl-6 space-y-1 text-sm text-slate-600">
-                <li>
-                  Sinkronisasi otomatis jadwal dari link export OASE Moodle
-                  (.ics).
-                </li>
+                <li>Sinkronisasi otomatis jadwal dari OASE.</li>
                 <li>
                   Pembuatan dan pembaruan agenda secara rapi di Google Calendar.
                 </li>
@@ -122,10 +118,6 @@ export default function TermsOfServicePage() {
               Dalam menggunakan Layanan ini, Anda setuju untuk:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-sm text-slate-600 leading-relaxed">
-              <li>
-                Menjaga kerahasiaan URL Kalender iCal pribadi Anda karena URL
-                tersebut memuat token akses unik ke jadwal kuliah Anda di OASE.
-              </li>
               <li>
                 Hanya menggunakan Layanan untuk kalender akademik milik Anda
                 sendiri atau kelas perkuliahan Anda yang sah.
@@ -180,8 +172,7 @@ export default function TermsOfServicePage() {
                 perbedaan waktu atau perubahan jadwal mendadak oleh dosen.
               </li>
               <li>
-                Gangguan ketersediaan pada server OASE Moodle atau Google
-                Calendar API.
+                Gangguan ketersediaan pada server OASE atau Google Calendar API.
               </li>
               <li>
                 Kerusakan atau kehilangan agenda kalender di luar kendali wajar

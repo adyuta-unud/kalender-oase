@@ -10,37 +10,51 @@ interface FaqItem {
 
 const FAQS: FaqItem[] = [
   {
-    question: "Apa itu Kalender OASE Universitas Udayana?",
+    question: "Apa itu Kalender OASE - Universitas Udayana?",
     answer:
-      "Kalender OASE adalah aplikasi yang menghubungkan sistem pembelajaran daring OASE Moodle Universitas Udayana ke Google Calendar. Aplikasi ini mengekstrak kalender untuk menyinkronkan jadwal tugas, kuis, dan ujian secara otomatis dan terjadwal.",
-  },
-  {
-    question: "Bagaimana cara mengambil daftar tugas dari OASE UNUD?",
-    answer:
-      "Cukup masukkan NIM dan Password akun SSO Universitas Udayana Anda pada form Autentikasi Akun OASE. Sistem akan mengambil daftar tugas, kuis, dan ujian yang belum selesai secara langsung dari API resmi Moodle OASE.",
-  },
-  {
-    question: "Apakah sinkronisasi kalender OASE ini aman dan menjaga privasi?",
-    answer:
-      "Sangat aman. Aplikasi menerapkan arsitektur stateless tanpa database server. Kredensial SSO Anda hanya digunakan secara langsung untuk mengambil sesi tugas Moodle via koneksi terenkripsi (HTTPS). Kami tidak pernah menyimpan kata sandi Anda di database mana pun.",
+      "Kalender OASE adalah platform integrasi akademik untuk mahasiswa dan dosen Universitas Udayana (UNUD). Aplikasi ini menyinkronkan jadwal tugas, kuis, asistensi, dan tenggat waktu perkuliahan dari portal OASE UNUD (https://oase.unud.ac.id) langsung ke Google Calendar secara otomatis, aman, dan real-time.",
   },
   {
     question:
-      "Bisakah kalender OASE tersinkronisasi otomatis tanpa harus buka web setiap hari?",
+      "Apa hubungan Kalender OASE dengan web resmi https://oase.unud.ac.id/?",
     answer:
-      "Bisa. Anda dapat mengaktifkan GitHub Actions gratis menggunakan workflow webhook yang telah kami sediakan di menu 'Github Actions'. GitHub Actions akan memicu sinkronisasi kalender setiap hari secara terjadwal.",
+      "Web https://oase.unud.ac.id/ adalah portal resmi Learning Management System (LMS) milik Universitas Udayana. Kalender OASE (https://oasee.vercel.app/) berfungsi sebagai aplikasi pendamping (companion tool) yang membaca jadwal tugas aktif dari portal resmi OASE dan memasukkannya ke Google Calendar Anda.",
   },
   {
     question:
-      "Bagaimana aplikasi mengetahui jika tugas sudah selesai saya kumpulkan di OASE?",
+      "Bagaimana cara mengambil dan menyinkronkan tugas dari OASE UNUD?",
     answer:
-      "Sistem memantau linimasa aktif Moodle OASE. Saat Anda mengumpulkan tugas di OASE, tugas tersebut otomatis hilang dari daftar pending dan di Google Calendar akan diperbarui dengan label '✅ [Selesai]' serta alarm pengingatnya dinonaktifkan.",
+      "Cukup masukkan NIM dan Password akun SSO Universitas Udayana Anda pada kartu Autentikasi Akun OASE, lalu klik Ambil Daftar Tugas. Setelah agenda terdeteksi, pilih kalender Google tujuan Anda dan tekan tombol Sinkronkan ke Google Calendar.",
+  },
+  {
+    question:
+      "Apakah Kalender OASE mendukung seluruh fakultas dan program studi di Universitas Udayana?",
+    answer:
+      "Ya. Semua fakultas dan prodi di Universitas Udayana yang aktif menggunakan portal pembelajaran daring OASE UNUD (seperti Fakultas Teknik, Kedokteran, MIPA, Ekonomi dan Bisnis, Hukum, Ilmu Budaya, Pertanian, Peternakan, Kedokteran Hewan, Perikanan, dan lainnya) dapat disinkronkan secara menyeluruh.",
+  },
+  {
+    question:
+      "Apakah sinkronisasi kalender OASE ini aman dan menjaga privasi data SSO?",
+    answer:
+      "Sangat aman. Kalender OASE menerapkan arsitektur stateless tanpa database server pusat. Kredensial SSO Anda hanya digunakan secara langsung untuk otentikasi via koneksi terenkripsi HTTPS. Kata sandi tidak pernah disimpan di database atau dibagikan ke pihak ketiga.",
+  },
+  {
+    question:
+      "Bisakah kalender OASE tersinkronisasi otomatis tanpa harus membuka web setiap hari?",
+    answer:
+      "Bisa. Anda dapat mengaktifkan GitHub Actions gratis menggunakan workflow webhook yang telah kami sediakan di menu Github Actions. Workflow tersebut akan memicu sinkronisasi kalender secara otomatis setiap hari di latar belakang.",
+  },
+  {
+    question:
+      "Bagaimana sistem mendeteksi jika tugas sudah selesai saya kumpulkan di OASE?",
+    answer:
+      "Sistem memantau linimasa aktif OASE UNUD. Saat Anda mengumpulkan tugas di OASE, tugas tersebut otomatis hilang dari daftar pending dan statusnya di Google Calendar diperbarui dengan tanda ✅ [Selesai] serta alarm pengingat dinonaktifkan.",
   },
   {
     question:
       "Apakah aplikasi ini resmi dibuat oleh pihak Universitas Udayana?",
     answer:
-      "Aplikasi ini merupakan proyek yang dikembangkan oleh mahasiswa untuk membantu sivitas Universitas Udayana. Aplikasi ini tidak berafiliasi resmi dengan Universitas Udayana maupun Google LLC.",
+      "Aplikasi ini merupakan proyek independen open-source yang dikembangkan oleh mahasiswa Informatika Universitas Udayana untuk membantu mempermudah manajemen akademik seluruh sivitas akademika UNUD. Aplikasi ini tidak berafiliasi secara komersial dengan Universitas Udayana maupun Google LLC.",
   },
 ];
 

@@ -283,11 +283,20 @@ function DashboardContent() {
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="max-w-2xl space-y-2">
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                Kalender OASE UNUD
+                Kalender OASE - Universitas Udayana
               </h1>
               <p className="text-sm text-blue-100/90 leading-relaxed">
-                Sinkronisasi jadwal tugas perkuliahan dari OASE Universitas
-                Udayana ke Google Calendar secara otomatis.
+                Sinkronisasi otomatis jadwal tugas kuliah, kuis, dan deadline
+                dari portal resmi{" "}
+                <a
+                  href="https://oase.unud.ac.id/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline font-semibold text-white hover:text-blue-200 transition-colors"
+                >
+                  OASE Universitas Udayana (oase.unud.ac.id)
+                </a>{" "}
+                langsung ke Google Calendar Anda.
               </p>
             </div>
 

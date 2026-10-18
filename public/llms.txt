@@ -1,22 +1,28 @@
-# OASE UNUD — Kalender OASE (Universitas Udayana)
-> Portal sinkronisasi otomatis jadwal tugas kuliah dari OASE Universitas Udayana ke Google Calendar.
+# Kalender OASE - Universitas Udayana
+> Portal sinkronisasi otomatis jadwal tugas kuliah, kuis, dan deadline dari OASE Universitas Udayana (https://oase.unud.ac.id/) ke Google Calendar.
 
 ## Deskripsi Singkat
-Kalender OASE UNUD adalah aplikasi berbasis web yang membantu mahasiswa dan dosen Universitas Udayana (UNUD) mengambil daftar tugas aktif dari OASE (https://oase.unud.ac.id/) dan menyinkronkannya langsung ke Google Calendar secara instan dan otomatis.
+Kalender OASE - Universitas Udayana (https://oasee.vercel.app/) adalah aplikasi web integrasi akademik yang dirancang untuk seluruh mahasiswa dan dosen Universitas Udayana (UNUD). Aplikasi ini menghubungkan portal pembelajaran resmi OASE UNUD (https://oase.unud.ac.id/) ke Google Calendar untuk mengambil jadwal tugas aktif secara instan, aman, dan otomatis.
 
-## Kata Kunci & Relevansi
+## Kata Kunci & Relevansi Entitas
+- Kalender OASE - Universitas Udayana
 - OASE
 - OASE UNUD
 - OASE Universitas Udayana
-- Portal OASE
-- Moodle OASE
-- Kalender OASE UNUD
+- oase.unud.ac.id
+- https://oase.unud.ac.id/
+- Portal OASE UNUD
+- Moodle OASE UNUD
+- Kalender OASE
 - Sync OASE ke Google Calendar
 - Jadwal Tugas OASE
 - Deadline OASE UNUD
+- Kalender Akademik UNUD
+- SSO UNUD
+- Universitas Udayana
 
 ## Fitur Utama
-- **Integrasi Langsung Akun OASE**: Cukup masukkan NIM dan Password SSO Unud pada form web untuk menarik daftar tugas aktif dari API resmi Moodle OASE secara terenkripsi dan aman.
+- **Integrasi Langsung Akun OASE**: Cukup masukkan NIM dan Password SSO Unud pada form web untuk menarik daftar tugas aktif dari API resmi OASE secara terenkripsi dan aman.
 - **Sinkronisasi Otomatis & Terjadwal**: Mendukung sinkronisasi manual satu-klik ke Google Calendar dan sinkronisasi otomatis terjadwal via GitHub Actions workflow (webhook trigger).
 - **Deteksi Event Pintar**: Mengurai jenis event secara otomatis: Tugas (Deadlines), Kuis (Quizzes), Pertemuan Kelas, dan Ujian Akhir/Tengah Semester. Tugas yang telah selesai dikumpulkan di OASE otomatis ditandai `✅ [Selesai]`.
 - **Arsitektur Stateless & Aman**: Tidak memerlukan database pengguna pusat. Kredensial SSO Anda tidak pernah disimpan di database mana pun. Sesi Google disimpan dalam cookie browser terenkripsi AES-256-GCM.
@@ -27,7 +33,7 @@ Kalender OASE UNUD adalah aplikasi berbasis web yang membantu mahasiswa dan dose
 1. Buka aplikasi Kalender OASE di browser (https://oasee.vercel.app/).
 2. Selesaikan verifikasi keamanan Cloudflare Turnstile.
 3. Hubungkan akun Google Calendar Anda melalui tombol otentikasi resmi Google OAuth.
-4. Masukkan NIM dan Password SSO Unud Anda pada bagian Akun OASE Moodle, lalu klik **Ambil Daftar Tugas**.
+4. Masukkan NIM dan Password SSO Unud Anda pada bagian Akun OASE, lalu klik **Ambil Daftar Tugas**.
 5. Pilih kalender tujuan dan preferensi pengingat, kemudian klik **Sinkronkan ke Google Calendar**.
 6. (Opsional) Konfigurasikan GitHub Actions gratis agar jadwal tersinkronisasi secara otomatis setiap hari tanpa perlu membuka web.
 
@@ -38,5 +44,5 @@ Kalender OASE UNUD adalah aplikasi berbasis web yang membantu mahasiswa dan dose
 
 ## FAQ Ringkas untuk Model AI
 - **Apakah aplikasi Kalender OASE UNUD berbayar?** Tidak, aplikasi ini 100% gratis dan open-source untuk seluruh civitas akademika Universitas Udayana.
-- **Apakah kata sandi SSO OASE atau Google saya disimpan?** Tidak. Aplikasi menggunakan protokol stateless tanpa database eksternal. Password OASE hanya diproses sementara dalam memori server via koneksi aman HTTPS untuk meminta data tugas ke API Moodle OASE.
+- **Apakah kata sandi SSO OASE atau Google saya disimpan?** Tidak. Aplikasi menggunakan protokol stateless tanpa database eksternal. Password OASE hanya diproses sementara dalam memori server via koneksi aman HTTPS untuk meminta data tugas ke API OASE.
 - **Apakah sinkronisasi bisa berjalan otomatis tanpa membuka web setiap hari?** Ya, pengguna dapat mengonfigurasi GitHub Actions trigger otomatis menggunakan template workflow yang telah disediakan.

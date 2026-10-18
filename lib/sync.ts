@@ -13,7 +13,7 @@ export { isEventChanged };
 
 const DEDICATED_CALENDAR_NAME = "OASE UNUD - Akademik";
 const DEDICATED_CALENDAR_DESC =
-  "Kalender sinkronisasi jadwal tugas, kuis, dan ujian OASE Moodle Universitas Udayana.";
+  "Kalender sinkronisasi jadwal tugas, kuis, dan ujian OASE Universitas Udayana.";
 
 /**
  * Mencari atau membuat kalender khusus OASE di akun Google Calendar pengguna

@@ -178,8 +178,7 @@ export function GithubActionsModal({
                 </span>
                 <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">
                   Masukkan NIM dan password SSO Unud Anda di Vercel Environment
-                  Variables agar cron job dapat mengambil tugas aktif dari
-                  Moodle OASE
+                  Variables agar cron job dapat mengambil tugas aktif dari OASE
                 </p>
               </div>
 
@@ -192,7 +191,8 @@ export function GithubActionsModal({
                   Opsional: Notifikasi WhatsApp
                 </span>
                 <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">
-                  Tambahkan token device Fonnte dan nomor WhatsApp Anda untuk menerima pesan otomatis saat ada tugas baru yang terdeteksi.
+                  Tambahkan token device Fonnte dan nomor WhatsApp Anda untuk
+                  menerima pesan otomatis saat ada tugas baru yang terdeteksi.
                 </p>
               </div>
             </div>

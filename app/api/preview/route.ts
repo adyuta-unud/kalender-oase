@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     const message =
       error instanceof Error
         ? error.message
-        : "Gagal memuat daftar tugas dari OASE Moodle.";
+        : "Gagal memuat daftar tugas dari OASE.";
     return NextResponse.json(
       { error: message, success: false },
       { status: 400 },

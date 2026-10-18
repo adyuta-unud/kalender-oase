@@ -1,4 +1,4 @@
-# 📅 Kalender OASE — Sinkronisasi Moodle ke Google Calendar & WhatsApp Bot
+# 📅 Kalender OASE — Sinkronisasi OASE ke Google Calendar & WhatsApp Bot
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.4-black?logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.3-blue?logo=react)](https://react.dev/)
@@ -9,7 +9,7 @@
 [![Groq AI](https://img.shields.io/badge/Groq%20Cloud-AI%20LPU-orange)](https://groq.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Aplikasi web modern untuk menyinkronkan jadwal perkuliahan, tenggat tugas, kuis, dan ujian dari portal **OASE Moodle Universitas Udayana** ke **Google Calendar**, dilengkapi **Notifikasi WhatsApp Otomatis** serta **Chatbot Asisten AI WhatsApp** yang interaktif, aman, dan hemat kuota.
+Aplikasi web modern untuk menyinkronkan jadwal perkuliahan, tenggat tugas, kuis, dan ujian dari portal **OASE Universitas Udayana** ke **Google Calendar**, dilengkapi **Notifikasi WhatsApp Otomatis** serta **Chatbot Asisten AI WhatsApp** yang interaktif, aman, dan hemat kuota.
 
 ---
 
@@ -18,7 +18,7 @@ Aplikasi web modern untuk menyinkronkan jadwal perkuliahan, tenggat tugas, kuis,
 ### 1. Sinkronisasi Kalender OASE
 
 - **Sinkronisasi Praktis:** Hubungkan akun Google, masukkan akun SSO OASE (NIM & Password), dan jadwal tugas yang belum dikerjakan langsung masuk ke Google Calendar.
-- **Filter Tugas Belum Dikerjakan & Penandaan Selesai:** Mengambil tugas aktif langsung dari API Moodle OASE (`core_calendar_get_action_events_by_timesort`). Tugas yang telah dikumpulkan otomatis ditandai `✅ [Selesai]` dan alarm pengingatnya dinonaktifkan.
+- **Filter Tugas Belum Dikerjakan & Penandaan Selesai:** Mengambil tugas aktif langsung dari API OASE (`core_calendar_get_action_events_by_timesort`). Tugas yang telah dikumpulkan otomatis ditandai `✅ [Selesai]` dan alarm pengingatnya dinonaktifkan.
 - **Pencegahan Duplikasi (Idempoten):** Mendeteksi agenda yang sudah ada agar tidak terjadi duplikasi, serta memperbarui otomatis jika ada perubahan jadwal atau revisi dari dosen.
 - **Pilihan Kalender Fleksibel:**
   - **Kalender Khusus (Disarankan):** Membuat kalender terpisah bernama _"OASE UNUD - Akademik"_ agar jadwal kuliah tidak bercampur dengan agenda pribadi.
@@ -54,7 +54,7 @@ Aplikasi web modern untuk menyinkronkan jadwal perkuliahan, tenggat tugas, kuis,
 - **Bahasa:** [TypeScript](https://www.typescriptlang.org/)
 - **Integrasi API:**
   - [Google APIs Client (`googleapis`)](https://github.com/googleapis/google-api-nodejs-client) — Google Calendar API v3 & OAuth 2.0
-  - API Internal Moodle OASE — Endpoint `core_calendar_get_action_events_by_timesort` via SSO Universitas Udayana
+  - API Internal OASE — Endpoint `core_calendar_get_action_events_by_timesort` via SSO Universitas Udayana
   - [Fonnte API](https://fonnte.com/) — WhatsApp Gateway (Notifikasi & Webhook Auto-Reply)
   - [Groq Cloud](https://console.groq.com/) — AI Assistant (Qwen 2.5 / Llama 3)
   - [Cloudflare Turnstile](https://challenges.cloudflare.com) — Verifikasi keamanan bot
@@ -94,7 +94,7 @@ cp .env.example .env.local
 Sesuaikan konfigurasi pada `.env.local`:
 
 ```env
-# 1. Kredensial SSO OASE Moodle (Opsional untuk default server / Cron otomatis)
+# 1. Kredensial SSO OASE (Opsional untuk default server / Cron otomatis)
 OASE_USERNAME="2208561001"
 OASE_PASSWORD="password_sso_anda"
 

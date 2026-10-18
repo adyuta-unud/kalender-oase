@@ -67,7 +67,7 @@ export default function PrivacyPolicyPage() {
               Kalender OASE (&quot;Aplikasi&quot;) adalah proyek independen yang
               dikembangkan untuk membantu sivitas akademika Universitas Udayana
               menyinkronkan jadwal perkuliahan, tenggat tugas, kuis, dan ujian
-              dari portal OASE Moodle ke Google Calendar pribadi.
+              dari portal OASE ke Google Calendar pribadi.
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
               Kami menghargai privasi Anda dan berkomitmen penuh untuk
@@ -103,14 +103,6 @@ export default function PrivacyPolicyPage() {
                 Digunakan untuk menambahkan jadwal baru, memperbarui agenda yang
                 berubah, dan memastikan tidak ada duplikasi jadwal di Google
                 Calendar Anda.
-              </li>
-              <li>
-                <strong className="text-slate-800">
-                  URL Kalender OASE (iCal Feed):
-                </strong>{" "}
-                URL kalender iCal dari OASE Moodle hanya digunakan oleh server
-                untuk mengambil dan membaca jadwal perkuliahan format .ics milik
-                Anda.
               </li>
             </ul>
           </section>
