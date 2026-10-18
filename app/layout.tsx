@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s | Kalender OASE - Universitas Udayana",
   },
   description:
-    "Kalender OASE Universitas Udayana (UNUD). Sinkronisasi otomatis jadwal tugas, kuis, dan deadline dari oase.unud.ac.id ke Google Calendar secara real-time.",
+    "Kalender OASE Universitas Udayana (UNUD). Sinkronisasi otomatis jadwal tugas, kuis, dan deadline dari oase.unud.ac.id ke Google Calendar",
   keywords: [
     "Kalender OASE - Universitas Udayana",
     "Kalender OASE",
