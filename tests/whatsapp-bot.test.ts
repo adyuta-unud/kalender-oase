@@ -4,6 +4,7 @@ import {
   GREETING_PATTERN,
   CLOSING_PATTERN,
   OASE_SCHEDULE_PATTERN,
+  DEFAULT_GROQ_SYSTEM_PROMPT,
   determineBotReply,
   buildUpcomingTasksMessage,
   askGroqAi,
@@ -77,22 +78,32 @@ test("WhatsApp Bot: CLOSING_PATTERN matches extended closing phrases", () => {
   assert.ok(!CLOSING_PATTERN.test("tugas oase"));
 });
 
-test("WhatsApp Bot: OASE_SCHEDULE_PATTERN matches schedule and task check keywords", () => {
+test("WhatsApp Bot: OASE_SCHEDULE_PATTERN matches only tugas and deadline check keywords", () => {
   const queries = [
     "cek tugas",
     "ada tugas apa?",
     "deadline",
     "tugas oase",
     "info deadline minggu ini",
-    "jadwal oase",
-    "jadwal kuliah",
-    "apa ada pr?",
-    "kuis oase",
-    "jadwal praktikum",
+    "tugas hari ini",
+    "kapan deadline tugas?",
+    "lihat deadline",
+    "tugas",
   ];
   for (const q of queries) {
     assert.ok(OASE_SCHEDULE_PATTERN.test(q), `Harus mencocokkan query: ${q}`);
   }
+
+  // Kata kunci jadwal, praktikum, asistensi, kuis, pr TIDAK boleh memicu cek tugas (harus ke AI)
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("jadwal"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("jadwal oase"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("jadwal kuliah"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("jadwal praktikum"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("praktikum"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("asistensi"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("jadwal asistensi"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("kuis oase"));
+  assert.ok(!OASE_SCHEDULE_PATTERN.test("apa ada pr?"));
 
   assert.ok(!OASE_SCHEDULE_PATTERN.test("siapa nama penciptamu?"));
   assert.ok(!OASE_SCHEDULE_PATTERN.test("ceritakan lelucon"));
@@ -235,7 +246,7 @@ test("WhatsApp Bot: determineBotReply handles Route 3 OASE tasks from Google Cal
   const decisionError = await determineBotReply(
     {
       sender: "6281234567890",
-      message: "jadwal oase",
+      message: "cek tugas",
       name: "Oka",
     },
     { getUpcomingTasksFn: mockGetErrorTasks },
@@ -470,12 +481,19 @@ test("WhatsApp Bot: handleIncomingWhatsAppWebhook handles complete execution flo
   );
 });
 
-test("WhatsApp Bot: askGroqAi parses valid Groq OpenAI response", async () => {
+test("WhatsApp Bot: askGroqAi parses valid Groq OpenAI response and strips accidental Chinese characters", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => {
     return new Response(
       JSON.stringify({
-        choices: [{ message: { content: "Halo, saya asisten AI Anda." } }],
+        choices: [
+          {
+            message: {
+              content:
+                "Halo, saya asisten AI Anda. 你好 Semangat kuliahnya ya! 学习",
+            },
+          },
+        ],
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
@@ -483,10 +501,24 @@ test("WhatsApp Bot: askGroqAi parses valid Groq OpenAI response", async () => {
 
   try {
     const res = await askGroqAi("Halo AI", { apiKey: "dummy-key" });
-    assert.equal(res, "Halo, saya asisten AI Anda.");
+    // Aksara Hanzi (你好 dan 学习) harus dibersihkan otomatis
+    assert.equal(res, "Halo, saya asisten AI Anda.  Semangat kuliahnya ya!");
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("WhatsApp Bot: DEFAULT_GROQ_SYSTEM_PROMPT explicitly forbids Chinese/Mandarin characters", () => {
+  assert.ok(
+    DEFAULT_GROQ_SYSTEM_PROMPT.includes("ATURAN BAHASA"),
+    "System prompt harus memiliki bagian aturan bahasa",
+  );
+  assert.ok(
+    DEFAULT_GROQ_SYSTEM_PROMPT.toLowerCase().includes("china") ||
+      DEFAULT_GROQ_SYSTEM_PROMPT.toLowerCase().includes("mandarin") ||
+      DEFAULT_GROQ_SYSTEM_PROMPT.toLowerCase().includes("hanzi"),
+    "System prompt harus secara tegas melarang aksara China/Mandarin",
+  );
 });
 
 test("WhatsApp Webhook Secret: enforces secret authentication securely", () => {
